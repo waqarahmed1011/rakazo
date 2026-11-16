@@ -104,13 +104,14 @@ vi.mock("./session", () => ({
 }));
 // Cache updates reach the screen inside act instead of on a later timer.
 notifyManager.setScheduler((callback) => callback());
-vi.mock("./api-server", () => ({}));
-vi.mock("./api-auth", () => ({}));
-vi.mock("./api-live", () => ({}));
 vi.mock("./app-foreground", () => ({ useAppForeground: () => true }));
 vi.mock("./api", () => ({
   currentApiBase: () => "https://app.example.test",
-  captureApiRequestContext: async () => ({ headers: {} }),
+  captureApiRequestContext: async (spaceId: string | null = "space-fixture") => ({
+    apiBase: "https://app.example.test",
+    sessionGeneration: 1,
+    headers: spaceId ? { "x-rakazo-space-id": spaceId } : {},
+  }),
   selectedSpaceId: () => "space-fixture",
   rpc: async (procedure: string, input?: unknown, options?: { signal?: AbortSignal }) => {
     const cloudflare = mocks.gateway

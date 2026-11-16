@@ -171,7 +171,7 @@ jobs:
         if: steps.areas.outputs.all_packages != 'false'
         run: node --test .github/scripts/app-store-review.test.mjs
       - name: Script tests
-        run: node --test scripts/lazy-vendors.test.mjs scripts/checks/*.test.mjs scripts/release/*.test.mjs
+        run: node --test scripts/lazy-vendors.test.mjs scripts/checks/*.test.mjs scripts/release/*.test.mjs scripts/exploratory-qa/*.test.mjs
 
   # Four runners finish the unit suite before the Web E2E shards, which set the pull request's
   # finish time; more runners only add per-job setup and queue for the account's runner limit. A
@@ -236,7 +236,7 @@ jobs:
             .agents/skills/translate/catalog-gaps.test.ts \
             infra/updater/src/compose-env.test.ts \
             packages/adapters/src/builtin-skills.test.ts \
-            packages/adapters/src/lark-lazy-loading.test.ts \
+            packages/adapters/src/providers/messaging/lark/lark-lazy-loading.test.ts \
             packages/page-kit/src/kit/labels.test.tsx \
             packages/testkit/src/eas-pnpm-version.test.ts \
             packages/testkit/src/ios-screenshot-catalog.test.ts)
