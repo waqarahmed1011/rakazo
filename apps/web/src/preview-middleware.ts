@@ -503,6 +503,7 @@ export function webServerSettings(read: (name: string) => string | undefined, lo
       }),
     performanceAssetDelayMs: Number(read("RAKAZO_PERFORMANCE_ASSET_DELAY_MS") ?? 0),
     desktopStackToken: read("RAKAZO_DESKTOP_STACK_TOKEN") ?? "",
+    instanceThemeFile: themeFile,
     instanceTheme:
       themeFile &&
       instanceThemeMiddleware(themeFile, (reason) =>
@@ -575,6 +576,12 @@ export function attachPreviewMiddleware(
   }
   attachNovncProxy(server, settings);
   return () => {
-    if (settings.instanceTheme) middlewares.use(instanceThemeIndexMiddleware(site.outDir));
+    if (settings.instanceTheme && settings.instanceThemeFile) {
+      middlewares.use(
+        instanceThemeIndexMiddleware(site.outDir, settings.instanceThemeFile, (reason) =>
+          settings.log.warn("web.instance_theme_ignored", { reason }),
+        ),
+      );
+    }
   };
 }

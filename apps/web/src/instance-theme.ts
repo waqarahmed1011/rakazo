@@ -3,6 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import type { ResolvedAppearance, WebColorTokens } from "@rakazo/ui-tokens";
 import { cssVariableName, webDarkTokens } from "@rakazo/ui-tokens";
+import { webManifest } from "./pwa/plugin.js";
 
 export const INSTANCE_THEME_PATH = "/instance-theme.css";
 const FONT_PATH = "/instance-theme/font/";
@@ -13,6 +14,10 @@ const FONT_STACK = /^[\w\s"',-]+$/;
 const FAMILY = /^[\w -]+$/;
 const WEIGHT = /^\d{3}(?: \d{3})?$/;
 const LENGTH = /^\d+(?:\.\d+)?(?:px|rem)$/;
+// Shown in the page title and copy: plain words only, so it can't break out of HTML.
+const NAME = /^[^<>&"'`\n]{1,40}$/;
+export const INSTANCE_ICON_PATH = "/instance-theme/icon.png";
+const MANIFEST_PATH = "/site.webmanifest";
 const FONT_TYPES: Record<string, { format: string; mime: string }> = {
   ".woff2": { format: "woff2", mime: "font/woff2" },
   ".woff": { format: "woff", mime: "font/woff" },
@@ -31,6 +36,10 @@ export type InstanceTheme = {
   fonts: { sans?: string; mono?: string; files: FontFile[] };
   /** The base corner size; the `rounded-sm` to `rounded-2xl` scale is derived from it. */
   radius?: string;
+  /** The product name shown in the page title, the installed app and sign-in. */
+  name?: string;
+  /** A square PNG inside the theme's folder, used as favicon, app icon and sign-in logo. */
+  icon?: string;
 };
 
 function readOverlay(value: unknown, where: string): Overlay {
@@ -88,12 +97,25 @@ function inside(dir: string, file: string): boolean {
 export function parseInstanceTheme(source: string, themeDir: string): InstanceTheme {
   const raw: unknown = JSON.parse(source);
   if (!raw || typeof raw !== "object") throw new Error("theme must be an object");
-  const { dark, light, fonts, radius, ...rest } = raw as Record<string, unknown>;
+  const { dark, light, fonts, radius, name, icon, ...rest } = raw as Record<string, unknown>;
   const unknownKey = Object.keys(rest)[0];
   if (unknownKey) throw new Error(`${unknownKey} is not a theme field`);
   const fontObject = (fonts ?? {}) as Record<string, unknown>;
   if (radius !== undefined && (typeof radius !== "string" || !LENGTH.test(radius))) {
     throw new Error('radius must look like "12px" or "0.5rem"');
+  }
+  if (name !== undefined && (typeof name !== "string" || !NAME.test(name.trim()))) {
+    throw new Error("name must be 1 to 40 characters with no <, >, &, quotes or line breaks");
+  }
+  let iconFile: string | undefined;
+  if (icon !== undefined) {
+    if (typeof icon !== "string" || path.extname(icon).toLowerCase() !== ".png") {
+      throw new Error("icon must be a .png file");
+    }
+    iconFile = path.resolve(themeDir, icon);
+    if (path.isAbsolute(icon) || !inside(themeDir, iconFile)) {
+      throw new Error("icon must be inside the theme's folder");
+    }
   }
   return {
     dark: readOverlay(dark, "dark"),
@@ -104,6 +126,8 @@ export function parseInstanceTheme(source: string, themeDir: string): InstanceTh
       files: readFontFiles(fontObject.files, themeDir),
     },
     radius,
+    name: typeof name === "string" ? name.trim() : undefined,
+    icon: iconFile,
   };
 }
 
@@ -146,28 +170,83 @@ export function renderInstanceThemeCss(theme: InstanceTheme): string {
     .join("\n\n");
 }
 
-/** Links the theme after the app's own head, so instances without one make no extra request. */
-export function withInstanceThemeLink(html: string): string {
-  return html.replace(
-    "</head>",
-    `  <link rel="stylesheet" href="${INSTANCE_THEME_PATH}" />\n  </head>`,
-  );
+type Identity = Pick<InstanceTheme, "name" | "icon">;
+
+/**
+ * Links the theme after the app's own head, so instances without one make no extra request.
+ * With a name or icon, the page also carries them: the title, the home-screen title, the icon
+ * links, and `instance-name` / `instance-icon` metas the app reads for its own copy.
+ */
+export function withInstanceThemeLink(html: string, identity: Identity = {}): string {
+  let page = html;
+  const extra: string[] = [];
+  if (identity.name) {
+    page = page
+      .replace(/<title>[^<]*<\/title>/, `<title>${identity.name}</title>`)
+      .replace(
+        /(<meta name="apple-mobile-web-app-title" content=")[^"]*(")/,
+        `$1${identity.name}$2`,
+      );
+    extra.push(`<meta name="instance-name" content="${identity.name}" />`);
+  }
+  if (identity.icon) {
+    page = page.replace(
+      /href="\/(?:favicon\.ico|favicon\.png|apple-touch-icon\.png)"/g,
+      `href="${INSTANCE_ICON_PATH}"`,
+    );
+    extra.push(`<meta name="instance-icon" content="${INSTANCE_ICON_PATH}" />`);
+  }
+  const head = [...extra, `<link rel="stylesheet" href="${INSTANCE_THEME_PATH}" />`]
+    .map((line) => `  ${line}\n`)
+    .join("");
+  return page.replace("</head>", `${head}  </head>`);
 }
 
 /**
  * The built page with the theme linked, for `vite preview`. Runs after Vite's SPA fallback has
  * rewritten the request to `/index.html`, so it answers exactly the requests that get the app.
+ * The theme file is re-read per page, like the stylesheet, so a renamed instance shows on reload.
  */
-export function instanceThemeIndexMiddleware(outDir: string) {
-  const html = withInstanceThemeLink(readFileSync(path.join(outDir, "index.html"), "utf8"));
+export function instanceThemeIndexMiddleware(
+  outDir: string,
+  themeFile?: string,
+  warn: (reason: string) => void = () => {},
+) {
+  const built = readFileSync(path.join(outDir, "index.html"), "utf8");
   return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     if (req.url?.split("?", 1)[0] !== "/index.html" || req.headers["sec-fetch-dest"] === "script") {
       return next();
     }
+    let identity: Identity = {};
+    if (themeFile) {
+      try {
+        identity = loadTheme(themeFile);
+      } catch (error) {
+        warn(error instanceof Error ? error.message : String(error));
+      }
+    }
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
-    res.end(req.method === "HEAD" ? undefined : html);
+    res.end(req.method === "HEAD" ? undefined : withInstanceThemeLink(built, identity));
   };
+}
+
+/** The installed app's manifest with the instance's name and icon in place of the defaults. */
+export function instanceManifest(identity: Identity): string {
+  const manifest = webManifest();
+  const icons = identity.icon
+    ? ["any", "maskable"].map((purpose) => ({
+        src: INSTANCE_ICON_PATH,
+        sizes: "any",
+        type: "image/png",
+        purpose,
+      }))
+    : manifest.icons;
+  return JSON.stringify({
+    ...manifest,
+    ...(identity.name ? { name: identity.name, short_name: identity.name } : {}),
+    icons,
+  });
 }
 
 function loadTheme(file: string): InstanceTheme {
@@ -191,6 +270,30 @@ export function instanceThemeMiddleware(themeFile: string, warn: (reason: string
         warn(error instanceof Error ? error.message : String(error));
       }
       res.end(css);
+      return;
+    }
+    if (pathname === MANIFEST_PATH || pathname === INSTANCE_ICON_PATH) {
+      try {
+        const theme = loadTheme(themeFile);
+        if (pathname === MANIFEST_PATH) {
+          if (!theme.name && !theme.icon) return next();
+          res.setHeader("content-type", "application/manifest+json");
+          res.setHeader("cache-control", "no-cache");
+          res.end(instanceManifest(theme));
+          return;
+        }
+        if (!theme.icon) return next();
+        const themeDir = realpathSync(path.dirname(path.resolve(themeFile)));
+        const real = realpathSync(theme.icon);
+        if (!inside(themeDir, real)) throw new Error(`${theme.icon} is outside the theme's folder`);
+        const body = readFileSync(real);
+        res.setHeader("content-type", "image/png");
+        res.setHeader("cache-control", "no-cache");
+        res.end(body);
+      } catch (error) {
+        warn(error instanceof Error ? error.message : String(error));
+        next();
+      }
       return;
     }
     if (!pathname.startsWith(FONT_PATH)) return next();

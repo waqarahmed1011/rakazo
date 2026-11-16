@@ -4,10 +4,13 @@ import type { OrganizationInvitationPreview } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { instanceName } from "../lib/instance-identity";
 import { useSave } from "../lib/query";
 import { clearSpaceSelection, rpc, selectSpace } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { AuthFrame, submitClass } from "./Auth";
+
+const appName = instanceName();
 
 // The invitation names its own organization, so a remembered Space that is no longer available
 // must not send the request through space recovery and away from it.
@@ -90,7 +93,7 @@ export function JoinOrganizationPage() {
         }}
       >
         <Button type="submit" className={submitClass}>
-          {state.kind === "error" ? <Trans>Retry</Trans> : <Trans>Open Rakazo</Trans>}
+          {state.kind === "error" ? <Trans>Retry</Trans> : <Trans>Open {appName}</Trans>}
         </Button>
       </AuthFrame>
     );

@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
 import {
+  instanceManifest,
   instanceThemeIndexMiddleware,
   instanceThemeMiddleware,
   parseInstanceTheme,
@@ -86,6 +87,10 @@ describe("instance theme", () => {
     ],
     [{ fonts: { files: [{ family: "Onest", file: "Onest.svg" }] } }, "fonts.files[0].file must be"],
     [{ spacing: "0" }, "spacing is not a theme field"],
+    [{ name: "<script>" }, "name must be 1 to 40 characters"],
+    [{ name: "a".repeat(41) }, "name must be 1 to 40 characters"],
+    [{ icon: "logo.svg" }, "icon must be a .png file"],
+    [{ icon: "../logo.png" }, "icon must be inside the theme's folder"],
     [{ radius: "4px; } body { display: none" }, "radius must look like"],
     [
       { fonts: { files: [{ family: "Onest", file: "/etc/Onest.ttf" }] } },
@@ -155,5 +160,42 @@ describe("instance theme", () => {
     const { res, warn } = serve(file, "/instance-theme.css");
     expect(res.end).toHaveBeenCalledWith("");
     expect(warn).toHaveBeenCalledWith("dark.background must be a hex color");
+  });
+
+  it("names the page and swaps the icons when the theme sets a name and icon", () => {
+    const folder = mkdtempSync(path.join(tmpdir(), "rakazo-dist-"));
+    writeFileSync(
+      path.join(folder, "index.html"),
+      '<html><head><meta name="apple-mobile-web-app-title" content="Rakazo" /><link rel="icon" href="/favicon.png" /><title>Rakazo</title></head></html>',
+    );
+    const file = themeFolder({ name: " JBW ", icon: "logo.png" }, { "logo.png": "png-bytes" });
+    const res = { setHeader: vi.fn(), end: vi.fn() };
+    instanceThemeIndexMiddleware(folder, file)(
+      { url: "/index.html", method: "GET", headers: {} } as unknown as IncomingMessage,
+      res as unknown as ServerResponse,
+      vi.fn(),
+    );
+    const html = String(res.end.mock.calls[0]?.[0]);
+    expect(html).toContain("<title>JBW</title>");
+    expect(html).toContain('content="JBW"');
+    expect(html).toContain('<link rel="icon" href="/instance-theme/icon.png" />');
+    expect(html).toContain('<meta name="instance-name" content="JBW" />');
+    expect(html).toContain('<meta name="instance-icon" content="/instance-theme/icon.png" />');
+
+    const icon = serve(file, "/instance-theme/icon.png");
+    expect(icon.res.setHeader).toHaveBeenCalledWith("content-type", "image/png");
+    expect(String(icon.res.end.mock.calls[0]?.[0])).toBe("png-bytes");
+    const manifest = JSON.parse(
+      String(serve(file, "/site.webmanifest").res.end.mock.calls[0]?.[0]),
+    );
+    expect(manifest.name).toBe("JBW");
+    expect(manifest.icons[0].src).toBe("/instance-theme/icon.png");
+  });
+
+  it("leaves the manifest and icon to the build when the theme sets neither", () => {
+    const file = themeFolder({ dark: { background: "#101418" } });
+    expect(serve(file, "/site.webmanifest").next).toHaveBeenCalled();
+    expect(serve(file, "/instance-theme/icon.png").next).toHaveBeenCalled();
+    expect(JSON.parse(instanceManifest({})).name).toBe("Rakazo");
   });
 });

@@ -3,7 +3,10 @@ import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { PageLoading } from "../components/PageLoading";
+import { instanceName } from "../lib/instance-identity";
 import { rpc } from "../lib/rpc";
+
+const appName = instanceName();
 
 export function SlackInstallCallbackPage() {
   const navigate = useNavigate();
@@ -32,7 +35,7 @@ export function SlackInstallCallbackPage() {
           <Trans>Could not connect</Trans>
         </div>
         <Button type="button" className="mt-5" onClick={() => navigate("/app?settings=messaging")}>
-          <Trans>Return to Rakazo</Trans>
+          <Trans>Return to {appName}</Trans>
         </Button>
       </div>
     </div>

@@ -165,6 +165,14 @@ your own domain. The web service re-reads the file on each page load, so a reloa
 Font files must sit inside the theme's folder. A file it can't use is skipped with a
 `web.instance_theme_ignored` warning naming the problem.
 
+`name` (up to 40 characters, no `<`, `>`, `&` or quotes) replaces the product name in the page
+title, the installed app and the sign-in page. `icon` is a square PNG relative to the theme file; it
+becomes the favicon, the installed app's icon and the sign-in logo:
+
+```json
+{ "name": "Acme Ops", "icon": "icon.png", "light": { "primary": "#1A3852" } }
+```
+
 With Docker Compose, mount the folder into the web service:
 
 ```yaml

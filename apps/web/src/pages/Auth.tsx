@@ -25,11 +25,15 @@ import { authClient } from "../lib/auth";
 import type { AuthCapabilities } from "../lib/auth-capabilities";
 import { fetchAuthCapabilities } from "../lib/auth-capabilities";
 import { desktopBridge } from "../lib/desktop";
+import { instanceIcon, instanceName } from "../lib/instance-identity";
 import { clearSpaceSelection } from "../lib/rpc";
 import { newAccountDestination, signInNext } from "../lib/sign-in-next";
 import { runSsoFlow } from "../lib/sso-flow";
 import { authErrorText, credentialIssueText } from "../lib/user-error";
 import { WindowChrome } from "./WindowChrome";
+
+const appName = instanceName();
+const appIcon = instanceIcon();
 
 type AuthMode = "in" | "up" | "forgot";
 
@@ -89,7 +93,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     ) : presented && mode === "in" ? (
       <Trans>Welcome back</Trans>
     ) : mode === "in" ? (
-      <Trans>Sign in to Rakazo</Trans>
+      <Trans>Sign in to {appName}</Trans>
     ) : mode === "up" ? (
       <Trans>Create your account</Trans>
     ) : (
@@ -685,11 +689,15 @@ export function AuthFrame({
         >
           {leading ? <div className="mb-4 self-start">{leading}</div> : null}
           <div className={surface ? "flex w-full flex-col items-center" : "contents"}>
-            <LogoAvatar
-              size={74}
-              avatarValue={BOT_COLOR_LIST.find((color) => color.id === "orange")?.hex}
-              motion={false}
-            />
+            {appIcon ? (
+              <img src={appIcon} alt={appName} width={74} height={74} className="rounded-2xl" />
+            ) : (
+              <LogoAvatar
+                size={74}
+                avatarValue={BOT_COLOR_LIST.find((color) => color.id === "orange")?.hex}
+                motion={false}
+              />
+            )}
             <h1
               aria-live="polite"
               className={

@@ -5,9 +5,12 @@ import { Button, cn } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SharedSpaceRules } from "../components/SharedSpaceRules";
+import { instanceName } from "../lib/instance-identity";
 import { rpc, selectSpace } from "../lib/rpc";
 import { errorText } from "../lib/user-error";
 import { AuthFrame, submitClass } from "./Auth";
+
+const appName = instanceName();
 
 // An invite names its own space, so a remembered one that is no longer available must not
 // send the request through space recovery and away from the invite.
@@ -101,7 +104,7 @@ export function InvitePage() {
         }}
       >
         <Button type="submit" className={submitClass}>
-          {state.kind === "invalid" ? <Trans>Open Rakazo</Trans> : <Trans>Retry</Trans>}
+          {state.kind === "invalid" ? <Trans>Open {appName}</Trans> : <Trans>Retry</Trans>}
         </Button>
       </AuthFrame>
     );

@@ -3,9 +3,12 @@ import { Button } from "@rakazo/ui-web";
 import { Check, Link } from "lucide-react";
 import { useState } from "react";
 import { useCopyText } from "../../lib/copy-text";
+import { instanceName } from "../../lib/instance-identity";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 import { PageFrame } from "./PageFrame";
 import { ManualCopy } from "./SharePopover";
+
+const appName = instanceName();
 
 const ACTION =
   "inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-body-sm font-medium whitespace-nowrap text-foreground ring-[0.5px] ring-border outline-none hover:bg-foreground/[0.08] focus-visible:ring-2 focus-visible:ring-ring";
@@ -28,7 +31,7 @@ export function PublicPageShell({ title, document }: { title: string; document: 
           className="inline-flex min-w-0 items-center gap-1.5 rounded-full py-1 pr-2 text-body-sm text-foreground/70 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
         >
           <img src="/favicon-32x32.png" alt="" className="size-4 rounded-full" />
-          <Trans>Open Rakazo</Trans>
+          <Trans>Open {appName}</Trans>
         </a>
         <h1 className="sr-only">{title}</h1>
         <nav aria-label={t`Page actions`} className="flex shrink-0 items-center gap-1.5">
