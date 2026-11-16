@@ -1,0 +1,49 @@
+name: fork-image
+
+# Builds this fork's app image for our own client deployments. Client branding is applied at
+# runtime through RAKAZO_THEME, so one image serves every client. The bot computer and updater
+# images still come from upstream.
+on:
+  push:
+    branches: ["claude/loving-ride-r8uxm7"]
+    paths-ignore: ["docs/**", "**/*.md"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: fork-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  app:
+    if: github.repository != 'elie222/rakazo'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+      - uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3.7.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Image name
+        id: name
+        run: echo "image=ghcr.io/${GITHUB_REPOSITORY,,}/app" >> "$GITHUB_OUTPUT"
+      - uses: docker/build-push-action@10e90e3645eae34f1e60eeb005ba3a3d33f178e8 # v6.19.2
+        with:
+          context: .
+          file: infra/compose/Dockerfile
+          platforms: linux/amd64
+          push: true
+          build-args: GIT_SHA=${{ github.sha }}
+          tags: |
+            ${{ steps.name.outputs.image }}:clients
+            ${{ steps.name.outputs.image }}:sha-${{ github.sha }}
+          cache-from: type=gha,scope=fork-app
+          cache-to: type=gha,mode=max,scope=fork-app
