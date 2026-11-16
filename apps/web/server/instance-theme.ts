@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import type { ResolvedAppearance, WebColorTokens } from "@rakazo/ui-tokens";
 import { cssVariableName, webDarkTokens } from "@rakazo/ui-tokens";
-import { webManifest } from "./pwa/plugin.js";
+import { webManifest } from "./pwa-plugin.js";
 
 export const INSTANCE_THEME_PATH = "/instance-theme.css";
 const FONT_PATH = "/instance-theme/font/";
