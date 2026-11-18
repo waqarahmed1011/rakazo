@@ -260,6 +260,8 @@ x-app-environment: &app-environment # Runtime
   WEB_PROVIDER:
   KEENABLE_API_KEY:
   COMPOSIO_API_KEY:
+  # A read-only GitHub token for plugin previews, past the anonymous 60 requests an hour.
+  PLUGIN_SOURCE_TOKEN:
   PIPEDREAM_CLIENT_ID:
   PIPEDREAM_CLIENT_SECRET:
   PIPEDREAM_PROJECT_ID:

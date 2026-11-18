@@ -206,8 +206,20 @@ export type PluginTextReader = (
   maxBytes: number,
   signal?: AbortSignal,
 ) => Promise<string>;
-const readPublicText: PluginTextReader = async (url, maxBytes, signal) =>
-  (await fetchSafeWebText(url, { maxBytes, signal })).body;
+const GITHUB_HOSTS = new Set(["api.github.com", "raw.githubusercontent.com"]);
+
+/**
+ * Reads a public plugin source. With `PLUGIN_SOURCE_TOKEN` set, GitHub requests carry it, so a
+ * shared server is not held to GitHub's anonymous limit of 60 API calls an hour.
+ */
+export const readPublicText: PluginTextReader = async (url, maxBytes, signal) => {
+  const token = process.env.PLUGIN_SOURCE_TOKEN?.trim();
+  const headers =
+    token && GITHUB_HOSTS.has(new URL(url).hostname)
+      ? { authorization: `Bearer ${token}` }
+      : undefined;
+  return (await fetchSafeWebText(url, { maxBytes, signal, headers })).body;
+};
 
 export async function fetchGitHubRepo(
   ref: PluginSourceRef,
@@ -956,7 +968,8 @@ export async function previewPluginInstall(options: {
 export function isTransientFetchError(error: unknown): boolean {
   if (!(error instanceof Error)) return false;
   if (error.name === "AbortError" || error.name === "TimeoutError") return true;
-  return /HTTP (408|429|5\d\d)|fetch failed|timed? ?out|aborted|ECONN|ENOTFOUND|EAI_AGAIN/i.test(
+  // GitHub answers a spent rate limit with 403 as often as 429.
+  return /HTTP (403|408|429|5\d\d)|fetch failed|timed? ?out|aborted|ECONN|ENOTFOUND|EAI_AGAIN/i.test(
     error.message,
   );
 }

@@ -17,7 +17,9 @@ function fakeScope(fetchStatus = 200) {
   const navigate = vi.fn(async () => undefined);
   const scope = {
     location: { origin: "https://app.example.test" },
-    registration: { showNotification: vi.fn(async () => undefined) },
+    registration: {
+      showNotification: vi.fn(async (_title: string, _options: object) => undefined),
+    },
     clients: {
       matchAll: vi.fn(async () => [
         { url: "https://app.example.test/app", focus: vi.fn(async () => undefined), navigate },

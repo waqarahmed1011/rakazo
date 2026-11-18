@@ -22,6 +22,7 @@ const context = {
   traceId: "trace",
   spaceId: "space-1",
   userId: "user-1",
+  signal: new AbortController().signal,
 } satisfies AdapterContext;
 
 function fakeStore(rows: Array<{ id: string; sessionId: string; endpoint: string }>) {
@@ -41,7 +42,9 @@ describe("BrowserPushSender", () => {
   const live = async () => new Date(Date.now() + 60_000);
 
   it("delivers the run, space and chat so the service worker can answer", async () => {
-    const transport = vi.fn(async () => 201);
+    const transport = vi.fn(
+      async (_sub: BrowserPushSubscription, _payload: string, _ttl: number) => 201,
+    );
     const sender = new BrowserPushSender(
       fakeStore([{ id: "a", sessionId: "s", endpoint: "https://push.example.test/a" }]),
       transport,
@@ -68,7 +71,9 @@ describe("BrowserPushSender", () => {
     const store = fakeStore([
       { id: "a", sessionId: "gone", endpoint: "https://push.example.test/a" },
     ]);
-    const transport = vi.fn(async () => 201);
+    const transport = vi.fn(
+      async (_sub: BrowserPushSubscription, _payload: string, _ttl: number) => 201,
+    );
     const sender = new BrowserPushSender(store, transport, async () => null);
     await expect(sender.hasRecipient("user-1")).resolves.toBe(false);
     expect(transport).not.toHaveBeenCalled();
