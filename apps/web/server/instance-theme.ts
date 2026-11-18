@@ -207,6 +207,20 @@ export function withInstanceThemeLink(html: string, identity: Identity = {}): st
  * rewritten the request to `/index.html`, so it answers exactly the requests that get the app.
  * The theme file is re-read per page, like the stylesheet, so a renamed instance shows on reload.
  */
+/** The theme's name and icon, or none when the file is missing or invalid. */
+export function instanceIdentity(
+  themeFile: string | undefined,
+  warn: (reason: string) => void = () => {},
+): Identity {
+  if (!themeFile) return {};
+  try {
+    return loadTheme(themeFile);
+  } catch (error) {
+    warn(error instanceof Error ? error.message : String(error));
+    return {};
+  }
+}
+
 export function instanceThemeIndexMiddleware(
   outDir: string,
   themeFile?: string,
@@ -217,14 +231,7 @@ export function instanceThemeIndexMiddleware(
     if (req.url?.split("?", 1)[0] !== "/index.html" || req.headers["sec-fetch-dest"] === "script") {
       return next();
     }
-    let identity: Identity = {};
-    if (themeFile) {
-      try {
-        identity = loadTheme(themeFile);
-      } catch (error) {
-        warn(error instanceof Error ? error.message : String(error));
-      }
-    }
+    const identity = instanceIdentity(themeFile, warn);
     res.setHeader("content-type", "text/html; charset=utf-8");
     res.setHeader("cache-control", "no-cache");
     res.end(req.method === "HEAD" ? undefined : withInstanceThemeLink(built, identity));

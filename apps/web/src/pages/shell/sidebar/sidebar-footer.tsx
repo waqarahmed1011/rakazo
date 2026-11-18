@@ -239,7 +239,7 @@ export function SidebarFooter({
                 {link.label}
               </Button>
             ))}
-            <div className="my-1 border-t border-border" />
+            {whiteLabeled && !onInvite ? null : <div className="my-1 border-t border-border" />}
             {whiteLabeled ? null : (
               <a
                 className={`${buttonVariants({ variant: "ghost" })} h-9 w-full justify-start gap-2.5 font-normal`}

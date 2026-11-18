@@ -1,7 +1,12 @@
 import type { AdapterContext, NotificationMessage } from "@rakazo/adapter-kit";
 import { describe, expect, it, vi } from "vitest";
 import type { BrowserPushStore, BrowserPushSubscription } from "./browser-push.js";
-import { BrowserPushSender, browserPushKeys, browserPushPayload } from "./browser-push.js";
+import {
+  BrowserPushSender,
+  browserPushKeys,
+  browserPushPayload,
+  publicPushEndpoint,
+} from "./browser-push.js";
 
 const subscription = (endpoint: string): BrowserPushSubscription => ({
   endpoint,
@@ -40,6 +45,7 @@ function fakeStore(rows: Array<{ id: string; sessionId: string; endpoint: string
 
 describe("BrowserPushSender", () => {
   const live = async () => new Date(Date.now() + 60_000);
+  const anyHost = async () => true;
 
   it("delivers the run, space and chat so the service worker can answer", async () => {
     const transport = vi.fn(
@@ -49,6 +55,7 @@ describe("BrowserPushSender", () => {
       fakeStore([{ id: "a", sessionId: "s", endpoint: "https://push.example.test/a" }]),
       transport,
       live,
+      anyHost,
     );
     await expect(sender.deliver(message, context)).resolves.toBe("delivered");
     const [, payload] = transport.mock.calls[0]!;
@@ -62,6 +69,7 @@ describe("BrowserPushSender", () => {
       store,
       vi.fn(async () => 410),
       live,
+      anyHost,
     );
     await expect(sender.deliver(message, context)).resolves.toBe("undeliverable");
     expect(store.removeById).toHaveBeenCalledWith("user-1", "a");
@@ -74,7 +82,7 @@ describe("BrowserPushSender", () => {
     const transport = vi.fn(
       async (_sub: BrowserPushSubscription, _payload: string, _ttl: number) => 201,
     );
-    const sender = new BrowserPushSender(store, transport, async () => null);
+    const sender = new BrowserPushSender(store, transport, async () => null, anyHost);
     await expect(sender.hasRecipient("user-1")).resolves.toBe(false);
     expect(transport).not.toHaveBeenCalled();
     expect(store.removeById).toHaveBeenCalledWith("user-1", "a");
@@ -88,8 +96,31 @@ describe("BrowserPushSender", () => {
     const transport = vi.fn(async (sub: BrowserPushSubscription) =>
       sub.endpoint.endsWith("a") ? 500 : 201,
     );
-    const sender = new BrowserPushSender(store, transport, live);
+    const sender = new BrowserPushSender(store, transport, live, anyHost);
     await expect(sender.deliver(message, context)).resolves.toBe("delivered");
+  });
+});
+
+describe("publicPushEndpoint", () => {
+  it("refuses plain http and internal hosts", async () => {
+    expect(await publicPushEndpoint("http://push.example.test/a")).toBe(false);
+    expect(await publicPushEndpoint("https://127.0.0.1/a")).toBe(false);
+    expect(await publicPushEndpoint("https://localhost/a")).toBe(false);
+    expect(await publicPushEndpoint("https://169.254.169.254/a")).toBe(false);
+  });
+
+  it("never sends to an endpoint that is not public", async () => {
+    const transport = vi.fn(
+      async (_sub: BrowserPushSubscription, _payload: string, _ttl: number) => 201,
+    );
+    const store = fakeStore([{ id: "a", sessionId: "s", endpoint: "https://10.0.0.5/a" }]);
+    const sender = new BrowserPushSender(
+      store,
+      transport,
+      async () => new Date(Date.now() + 60_000),
+    );
+    await expect(sender.deliver(message, context)).resolves.toBe("undeliverable");
+    expect(transport).not.toHaveBeenCalled();
   });
 });
 

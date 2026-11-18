@@ -14,7 +14,7 @@ import { wuyingScreenAssets } from "../../packages/adapters/src/providers/comput
 import { wuyingScreenPolicy } from "../../packages/adapters/src/providers/computer/wuying/wuying-screen-policy.ts";
 import { createServiceLogger } from "../../packages/logging/src/env.ts";
 import { apiProxy } from "./server/api-proxy.js";
-import { withInstanceThemeLink } from "./server/instance-theme.js";
+import { instanceIdentity, withInstanceThemeLink } from "./server/instance-theme.js";
 import {
   attachDesktopStackProbe,
   attachNovncProxy,
@@ -122,7 +122,9 @@ export default defineConfig(({ command, mode }) => {
         // Without RAKAZO_THEME the page never links the theme, so the default deploy is unchanged.
         name: "rakazo-instance-theme",
         transformIndexHtml: (html) =>
-          command === "serve" && instanceTheme ? withInstanceThemeLink(html) : html,
+          command === "serve" && instanceTheme
+            ? withInstanceThemeLink(html, instanceIdentity(settings.instanceThemeFile))
+            : html,
       },
     ],
     server: {

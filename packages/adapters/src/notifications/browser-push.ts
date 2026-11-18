@@ -1,9 +1,11 @@
 import type { AdapterContext, NotificationMessage } from "@rakazo/adapter-kit";
+import { ClientError } from "@rakazo/core";
 import type { PrismaClient } from "@rakazo/db";
 import { runAsSystem } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
 import { credentialDigest } from "../secrets/credential-digest.js";
 import { EncryptedSecretStore } from "../secrets/secrets.js";
+import { assertSafeWebUrl } from "../web/web-ssrf.js";
 
 export type BrowserPushSubscription = {
   endpoint: string;
@@ -20,6 +22,24 @@ export type BrowserPushTransport = (
 type StoredSubscription = { id: string; sessionId: string; subscription: BrowserPushSubscription };
 
 const recordId = (id: string) => `browser-push:${id}`;
+
+export class BrowserPushEndpointError extends ClientError {
+  constructor() {
+    super("BAD_REQUEST", "That push address is not a public push service");
+    this.name = "BrowserPushEndpointError";
+  }
+}
+
+/** Push services are public HTTPS hosts; anything else would let a user aim the server inward. */
+export async function publicPushEndpoint(endpoint: string): Promise<boolean> {
+  if (!endpoint.startsWith("https://")) return false;
+  try {
+    await assertSafeWebUrl(endpoint, undefined, undefined, [443]);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const PUSH_TTL_SECONDS = 24 * 60 * 60;
 
 /** Browser subscriptions, sealed, one per browser, each tied to the session that made it. */
@@ -38,6 +58,7 @@ export class BrowserPushStore {
     sessionId: string,
     subscription: BrowserPushSubscription,
   ): Promise<void> {
+    if (!(await publicPushEndpoint(subscription.endpoint))) throw new BrowserPushEndpointError();
     const id = credentialDigest(subscription.endpoint);
     const sealed = await this.encryption.put(
       JSON.stringify(subscription),
@@ -118,6 +139,7 @@ export class BrowserPushSender {
     private readonly store: BrowserPushStore,
     private readonly transport: BrowserPushTransport,
     private readonly sessionExpiresAt?: (sessionId: string) => Promise<Date | null>,
+    private readonly isPublicEndpoint: (endpoint: string) => Promise<boolean> = publicPushEndpoint,
   ) {}
 
   async hasRecipient(userId: string): Promise<boolean> {
@@ -132,6 +154,8 @@ export class BrowserPushSender {
     const payload = JSON.stringify(browserPushPayload(message, context.spaceId));
     const results = await Promise.allSettled(
       (await this.live(context.userId)).map(async ({ id, subscription }) => {
+        // Checked again here: the address a host name resolves to can change after saving.
+        if (!(await this.isPublicEndpoint(subscription.endpoint))) return false;
         const status = await this.transport(subscription, payload, PUSH_TTL_SECONDS);
         if (status === 404 || status === 410) {
           await this.store.removeById(context.userId, id);
