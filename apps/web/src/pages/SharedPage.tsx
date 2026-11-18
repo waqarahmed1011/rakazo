@@ -6,8 +6,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { PublicPageShell } from "../components/pages/PublicPageShell";
-import { instanceName } from "../lib/instance-identity";
-import { usePageDocument } from "../lib/pages";
+import { usePageDocument } from "../lib/pages/pages";
+import { instanceName } from "../lib/platform/instance-identity";
 
 const appName = instanceName();
 

@@ -3,7 +3,7 @@ import { Button } from "@rakazo/ui-web";
 import { Check, Link } from "lucide-react";
 import { useState } from "react";
 import { useCopyText } from "../../lib/copy-text";
-import { instanceName } from "../../lib/instance-identity";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { DownloadPdfButton } from "./DownloadPdfButton";
 import { PageFrame } from "./PageFrame";
 import { ManualCopy } from "./SharePopover";

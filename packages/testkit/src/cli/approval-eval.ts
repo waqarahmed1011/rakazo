@@ -4,16 +4,16 @@ import path from "node:path";
 import type { AutoReviewProvider, ModelCallObserver } from "@rakazo/adapter-kit";
 import { ModelConnectInputSchema } from "@rakazo/contracts";
 import { loadRootEnv } from "@rakazo/core/node/load-root-env";
-import type { ApprovalCaseResult } from "../evals/approval.js";
+import type { EvalPricing, MeasuredCall } from "../evals/measurement.js";
+import { SpendBudget, validatePricing } from "../evals/measurement.js";
+import { redact } from "../evals/report.js";
+import type { ApprovalCaseResult } from "../evals/suites/approval.js";
 import {
   APPROVAL_CASES,
   APPROVAL_FIXTURE_VERSION,
   runApprovalCases,
   summarizeApproval,
-} from "../evals/approval.js";
-import type { EvalPricing, MeasuredCall } from "../evals/measurement.js";
-import { SpendBudget, validatePricing } from "../evals/measurement.js";
-import { redact } from "../evals/report.js";
+} from "../evals/suites/approval.js";
 
 type ApprovalValues = {
   live?: boolean;
@@ -33,7 +33,8 @@ type ApprovalValues = {
 
 /**
  * Live calibration of the Auto approval reviewer against reviewed cases. The reviewer is the
- * product's own adapter, selected from a model connection or the same env the product reads.
+ * product's own adapter: the deployment's included decision reviewer by default, or one chosen by
+ * a model connection or the same env the product reads.
  */
 export async function runApprovalSuite(
   values: ApprovalValues,
@@ -102,10 +103,12 @@ export async function runApprovalSuite(
   loadRootEnv();
 
   // Direct source imports keep the adapters barrel, and its database client, out of this suite.
-  const autoReview = await import("../../../adapters/src/auto-review.ts");
-  const { decisionModel } = await import("../../../adapters/src/decision-models.ts");
+  const autoReview = await import("../../../adapters/src/approvals/auto-review.ts");
+  const { decisionModel, includedDecisionModel } = await import(
+    "../../../adapters/src/approvals/decision-models.ts"
+  );
   const { APPROVAL_DECISION_RUBRIC_VERSION } = await import(
-    "../../../adapters/src/decision-auto-review.ts"
+    "../../../adapters/src/approvals/decision-auto-review.ts"
   );
   report.rubricVersion = APPROVAL_DECISION_RUBRIC_VERSION;
 
@@ -137,8 +140,18 @@ export async function runApprovalSuite(
       );
     connection = { ...parsed.data, modelId: parsed.data.modelId, headers: parsed.data.headers };
   } else {
-    // The same selection the product makes from RAKAZO_AUTO_REVIEW_* and the deployment model.
-    const checker = autoReview.resolveAutoReviewChecker(process.env);
+    // The deployment's included decision reviewer by default, so scores describe what Auto mode
+    // actually does; set RAKAZO_AUTO_REVIEW_* (or pass --connection) to score another one, the same
+    // selection the product makes from those settings and the deployment model.
+    const chosen = process.env.RAKAZO_AUTO_REVIEW_PROVIDER?.trim();
+    const included = chosen ? undefined : includedDecisionModel(process.env);
+    if (!chosen && !included)
+      return notRun(
+        "Approval evals use the deployment's included decision reviewer by default and its key is not in env; add it, or choose another reviewer with --connection or RAKAZO_AUTO_REVIEW_PROVIDER",
+      );
+    const checker = included
+      ? { provider: included.provider, model: included.id }
+      : autoReview.resolveAutoReviewChecker(process.env);
     const envKeys: Record<string, string | undefined> = {
       [autoReview.JEV_AUTO_REVIEW_PROVIDER]: autoReview.typesafeApiKey(process.env),
       openrouter: process.env.OPENROUTER_API_KEY?.trim(),
@@ -146,7 +159,7 @@ export async function runApprovalSuite(
     };
     if (!checker || checker.provider === autoReview.SCRIPTED_AUTO_REVIEW_PROVIDER)
       return notRun("No live approval reviewer is configured; pass --connection or set its env");
-    const apiKey = envKeys[checker.provider];
+    const apiKey = included?.deploymentApiKey(process.env) ?? envKeys[checker.provider];
     if (!apiKey)
       return notRun(
         "The configured approval reviewer has no key in env; pass --connection for other providers",
@@ -202,7 +215,9 @@ export async function runApprovalSuite(
   let reviewer: AutoReviewProvider;
   try {
     if (isJev) {
-      const { JevAutoReviewProvider } = await import("../../../adapters/src/jev-auto-review.ts");
+      const { JevAutoReviewProvider } = await import(
+        "../../../adapters/src/providers/decision/typesafe/jev-auto-review.ts"
+      );
       reviewer = new JevAutoReviewProvider({
         apiKey,
         model: connection.modelId,
@@ -210,9 +225,11 @@ export async function runApprovalSuite(
         onUsage: async (usage) => record(usage),
       });
     } else if (catalog) {
-      const { HttpDecisionProvider } = await import("../../../adapters/src/http-decisions.ts");
+      const { HttpDecisionProvider } = await import(
+        "../../../adapters/src/approvals/http-decisions.ts"
+      );
       const { DecisionAutoReviewProvider } = await import(
-        "../../../adapters/src/decision-auto-review.ts"
+        "../../../adapters/src/approvals/decision-auto-review.ts"
       );
       reviewer = new DecisionAutoReviewProvider({
         provider: new HttpDecisionProvider("openrouter", {
@@ -224,7 +241,7 @@ export async function runApprovalSuite(
         model: connection.modelId,
       });
     } else {
-      const { PiAgentRuntime } = await import("../../../adapters/src/pi-runtime.ts");
+      const { PiAgentRuntime } = await import("../../../adapters/src/runtime/pi/pi-runtime.ts");
       reviewer = new autoReview.LlmAutoReviewProvider({
         runtime: new PiAgentRuntime({ modelCallObserver: callObserver }),
         checker: { provider: connection.provider, model: connection.modelId },
