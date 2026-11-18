@@ -536,6 +536,24 @@ export function accountRoutes(ctx: RouterContext) {
         await deps.pushTokens.remove(context.actor.userId);
         return { ok: true as const };
       }),
+      browserPushKey: authed.notifications.browserPushKey.handler(() => ({
+        publicKey: deps.browserPush?.publicKey ?? null,
+      })),
+      registerBrowserPush: authed.notifications.registerBrowserPush.handler(
+        async ({ context, input }) => {
+          if (!context.sessionId) throw new ORPCError("UNAUTHORIZED");
+          if (!deps.browserPush)
+            throw new ClientError("NOT_FOUND", "Push is not set up on this server");
+          await deps.browserPush.store.save(context.actor.userId, context.sessionId, input);
+          return { ok: true as const };
+        },
+      ),
+      unregisterBrowserPush: authed.notifications.unregisterBrowserPush.handler(
+        async ({ context, input }) => {
+          await deps.browserPush?.store.remove(context.actor.userId, input.endpoint);
+          return { ok: true as const };
+        },
+      ),
       followWorkActivity: authed.notifications.followWorkActivity.handler(
         async ({ context, input }) => {
           // The card ends with the session that registered it.

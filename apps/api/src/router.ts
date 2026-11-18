@@ -11,6 +11,7 @@ import type {
   TransactionalEmailProvider,
 } from "@rakazo/adapter-kit";
 import type {
+  BrowserPushStore,
   CloudAgentConnection,
   CodexLiveCatalog,
   ConnectorRegistry,
@@ -69,6 +70,8 @@ export { callMarkerClientNonce } from "./routes/threads.js";
 
 export interface RouterDeps {
   pushTokens: PushTokenStore;
+  /** Absent when the server has no Web Push keys, so installed web apps cannot get pushes. */
+  browserPush?: { store: BrowserPushStore; publicKey: string };
   /** Absent when the deployment cannot update a phone's live status card. */
   workActivities?: Pick<WorkActivities, "register" | "registerStarts">;
   /** Stops a call's ring on the owner's other devices once it is settled. */

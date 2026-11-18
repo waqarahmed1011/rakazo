@@ -29,6 +29,7 @@ import type {
 } from "@rakazo/adapters";
 import {
   BillingEmulator,
+  BrowserPushStore,
   ChatSdkMessagingSurface,
   CodexCatalogCache,
   configuredBotEmailProvider,
@@ -37,6 +38,7 @@ import {
   createApnsActivityProvider,
   createApnsVoipProvider,
   createArtifactStore,
+  createBrowserPushSender,
   createCloudAgentConnection,
   createConnectorRuntime,
   createDubPartnerProgram,
@@ -521,6 +523,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
           sessionRoot: env.piSessionRecording ? piSessionsRoot(env.dataDir) : undefined,
         }));
   const pushTokens = new PrismaPushTokenStore(prisma, env.encryptionKey);
+  const browserPushStore = new BrowserPushStore(prisma, env.encryptionKey);
   const notifications =
     notificationsOverride ??
     new ExpoPushProvider(pushTokens, {
@@ -528,6 +531,12 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       jobs,
       accessToken: env.expoAccessToken,
       voip: await createApnsVoipProvider(env.apnsVoip),
+      browserPush: await createBrowserPushSender(
+        prisma,
+        env.encryptionKey,
+        env.browserPush,
+        (sessionId) => pushSessionExpiresAt(prisma, sessionId),
+      ),
     });
   const activityPush = await createApnsActivityProvider(env.apnsVoip);
   if (activityPush) workActivities = new WorkActivities(prisma, env.encryptionKey, activityPush);
@@ -634,6 +643,10 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       await pushTokens
         .endSession(session.userId, session.id)
         .catch((error) => getLogger().error("push token removal failed", error));
+      await bestEffort(
+        "browser push removal after sign-out",
+        browserPushStore.endSession(session.userId, session.id),
+      );
       await workActivities
         ?.endSession(session.userId, session.id)
         .catch((error) => getLogger().error("live status card removal failed", error));
@@ -645,6 +658,10 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       await pushTokens
         .endSession(session.userId, previous.id, session.id)
         .catch((error) => getLogger().error("push token session update failed", error));
+      await bestEffort(
+        "browser push session update",
+        browserPushStore.endSession(session.userId, previous.id, session.id),
+      );
       await workActivities
         ?.endSession(session.userId, previous.id, session.id)
         .catch((error) => getLogger().error("live status card session update failed", error));
@@ -816,6 +833,9 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     prisma,
     notifications,
     pushTokens,
+    browserPush: env.browserPush
+      ? { store: browserPushStore, publicKey: env.browserPush.publicKey }
+      : undefined,
     workActivities,
     events,
     ticketChanges,

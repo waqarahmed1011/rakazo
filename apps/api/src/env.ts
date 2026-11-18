@@ -2,11 +2,13 @@ import { readFileSync } from "node:fs";
 import type { WorkspaceExportLimits } from "@rakazo/adapter-kit";
 import type {
   ApnsVoipConfig,
+  BrowserPushKeys,
   MessagingEnvironmentValues,
   SandboxProviderOptions,
 } from "@rakazo/adapters";
 import {
   apnsVoipConfig,
+  browserPushKeys,
   deploymentLabsFromEnv,
   mcpStdioOptionsFromEnv,
   messagingEnvFromProcess,
@@ -121,6 +123,7 @@ export interface AppEnv extends MessagingEnvironmentValues {
   pipedreamProjectId: string | undefined;
   pipedreamEnvironment: "development" | "production";
   expoAccessToken: string | undefined;
+  browserPush: BrowserPushKeys | undefined;
   apnsVoip?: ApnsVoipConfig;
   smtpUrl: string | undefined;
   botEmailSmtpUrl?: string;
@@ -316,6 +319,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): AppEnv {
     pipedreamEnvironment:
       source.PIPEDREAM_ENVIRONMENT === "production" ? "production" : "development",
     expoAccessToken: optional(source.EXPO_ACCESS_TOKEN),
+    browserPush: browserPushKeys(source),
     apnsVoip: apnsVoipConfig(source),
     smtpUrl: optional(source.SMTP_URL),
     botEmailSmtpUrl: optional(source.BOT_EMAIL_SMTP_URL),

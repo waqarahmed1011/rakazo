@@ -67,6 +67,10 @@ x-app-environment: &app-environment # Runtime
   WELCOME_EMAIL_ENABLED:
   RAKAZO_SECRETS_ALLOW_PRIVATE_HTTP:
   EXPO_ACCESS_TOKEN:
+  # Web Push keys for installed web apps (approvals and replies while the app is closed).
+  WEB_PUSH_PUBLIC_KEY:
+  WEB_PUSH_PRIVATE_KEY:
+  WEB_PUSH_CONTACT:
   APNS_VOIP_KEY_ID:
   APNS_VOIP_TEAM_ID:
   APNS_VOIP_PRIVATE_KEY:

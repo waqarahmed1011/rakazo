@@ -11,6 +11,7 @@ await unwrapEnvFromKeyManager();
 
 import {
   apnsVoipConfig,
+  browserPushKeys,
   ChatSdkMessagingSurface,
   CodexCatalogCache,
   configuredBotEmailProvider,
@@ -20,6 +21,7 @@ import {
   createApnsActivityProvider,
   createApnsVoipProvider,
   createArtifactStore,
+  createBrowserPushSender,
   createCloudAgentConnection,
   createConnectorRuntime,
   createDeadJobPruner,
@@ -224,6 +226,12 @@ async function main() {
     jobs,
     accessToken: process.env.EXPO_ACCESS_TOKEN,
     voip: await createApnsVoipProvider(apnsVoipConfig(process.env)),
+    browserPush: await createBrowserPushSender(
+      prisma,
+      env.encryptionKey,
+      browserPushKeys(process.env),
+      (sessionId) => pushSessionExpiresAt(prisma, sessionId),
+    ),
   });
   const activityPush = await createApnsActivityProvider(apnsVoipConfig(process.env));
   if (activityPush) workActivities = new WorkActivities(prisma, env.encryptionKey, activityPush);

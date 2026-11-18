@@ -622,6 +622,38 @@ export function threadsRoutes(ctx: RouterContext) {
         await wakeRun(deps.jobs, input.runId);
         return { ok: true as const };
       }),
+      answerApproval: authed.threads.answerApproval.handler(async ({ context, input }) => {
+        const run = await deps.prisma.run.findFirst({
+          where: { id: input.runId, spaceId: context.actor.spaceId },
+          select: { threadId: true },
+        });
+        // The card is the run's last message: a paused run adds nothing after it.
+        const card = run
+          ? await deps.prisma.message.findFirst({
+              where: { runId: input.runId, threadId: run.threadId },
+              orderBy: { seq: "desc" },
+              select: { id: true },
+            })
+          : null;
+        const answered =
+          run &&
+          card &&
+          (await deps.events.answerRunInput({
+            spaceId: context.actor.spaceId,
+            threadId: run.threadId,
+            runId: input.runId,
+            messageId: card.id,
+            answeredByUserId: context.actor.userId,
+            answer: input.answer,
+          }));
+        if (!answered) {
+          throw new ORPCError("CONFLICT", {
+            message: "This prompt is no longer awaiting an answer",
+          });
+        }
+        await wakeRun(deps.jobs, input.runId);
+        return { ok: true as const };
+      }),
       answerToolQuestion: authed.threads.answerToolQuestion.handler(async ({ context, input }) => {
         const target = await resolveThreadTarget(deps.prisma, context.actor, input);
         const committed = await answerToolQuestion(deps.prisma, {

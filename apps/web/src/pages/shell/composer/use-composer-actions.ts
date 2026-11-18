@@ -36,9 +36,11 @@ import {
 import { canPrepareImage, prepareImage } from "../../../lib/composer/prepare-image";
 import type { PageSession } from "../../../lib/pages/pages";
 import { requestBrowserNotificationPermission } from "../../../lib/platform/browser-notifications";
+import { syncBrowserPush } from "../../../lib/platform/browser-push";
 import type { createSpaceRpc } from "../../../lib/query/rpc";
 import { clearActiveThreadRuns, threadRunError } from "../../../lib/query/thread-events";
 import { errorText } from "../../../lib/query/user-error";
+import { isStandalone } from "../../../pwa/standalone";
 import type { PendingAttachment } from "../chat/chat-shared";
 import type { useShellNavigation } from "../use-shell-navigation";
 
@@ -366,10 +368,17 @@ export function useComposerActions({
       const botTarget = reroutedToGroup ? undefined : initialBotTarget;
       if (
         plan.shouldSend &&
-        (groupTarget || botsRef.current.find((bot) => bot.id === botTarget)?.notifyOnFinish)
+        (isStandalone() ||
+          groupTarget ||
+          botsRef.current.find((bot) => bot.id === botTarget)?.notifyOnFinish)
       ) {
+        // The installed app always asks: its approvals arrive as notifications.
         const permissionRequest = requestBrowserNotificationPermission();
-        if (permissionRequest) void permissionRequest.then(flushPendingBrowserNotifications);
+        if (permissionRequest)
+          void permissionRequest.then((permission) => {
+            flushPendingBrowserNotifications();
+            if (permission === "granted") void syncBrowserPush(rpc).catch(() => undefined);
+          });
       }
       // The open page rides only on text this chat sends, never on a group or routine-only send.
       const fromPage =

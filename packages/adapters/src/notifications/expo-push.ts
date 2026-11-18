@@ -14,6 +14,7 @@ import type { IncomingCallPush, VoipPushProvider } from "../calls/apns-voip.js";
 import { combineSignals } from "../integrations/connector-safety.js";
 import { credentialDigest } from "../secrets/credential-digest.js";
 import { readBodyCapped, withAbort } from "../web/web-ssrf.js";
+import type { BrowserPushSender } from "./browser-push.js";
 import type { PushRecord, PushTokenStore } from "./push-token-store.js";
 
 const EXPO_PUSH_URL = "https://exp.host/--/api/v2/push/send";
@@ -178,6 +179,8 @@ export type ExpoPushOptions = {
   /** Sent as a bearer token when the Expo project enforces enhanced push security. */
   accessToken?: string;
   retryDelaysMs?: readonly number[];
+  /** Also delivers to installed web apps, so a person without the phone app still hears. */
+  browserPush?: BrowserPushSender;
 };
 
 export class ExpoPushProvider implements NotificationProvider {
@@ -186,6 +189,7 @@ export class ExpoPushProvider implements NotificationProvider {
   private readonly jobs?: JobPublisher;
   private readonly accessToken?: string;
   private readonly retryDelaysMs: readonly number[];
+  private readonly browserPush?: BrowserPushSender;
 
   constructor(
     private readonly tokens: PushTokenStore,
@@ -196,6 +200,7 @@ export class ExpoPushProvider implements NotificationProvider {
     this.jobs = options.jobs;
     this.accessToken = options.accessToken?.trim() || undefined;
     this.retryDelaysMs = options.retryDelaysMs ?? EXPO_PUSH_RETRY_DELAYS_MS;
+    this.browserPush = options.browserPush;
   }
 
   describe() {
@@ -208,7 +213,8 @@ export class ExpoPushProvider implements NotificationProvider {
   }
 
   async hasPushRecipient(userId: string): Promise<boolean> {
-    return (await this.deliverableTokens(userId)).length > 0;
+    if ((await this.deliverableTokens(userId)).length > 0) return true;
+    return (await this.browserPush?.hasRecipient(userId)) ?? false;
   }
 
   async send(message: NotificationMessage, context: AdapterContext): Promise<void> {
@@ -319,6 +325,23 @@ export class ExpoPushProvider implements NotificationProvider {
    * device took the push, so a retry never repeats it on a device that already has it.
    */
   async deliver(message: NotificationMessage, context: AdapterContext): Promise<ExpoPushDelivery> {
+    if (!this.browserPush) return this.deliverToPhones(message, context);
+    const [phones, browsers] = await Promise.allSettled([
+      this.deliverToPhones(message, context),
+      this.browserPush.deliver(message, context),
+    ]);
+    if (phones.status === "fulfilled" && phones.value === "delivered") return "delivered";
+    if (browsers.status === "fulfilled" && browsers.value === "delivered") return "delivered";
+    if (browsers.status === "rejected")
+      getLogger().error("browser push delivery failed", { error: browsers.reason });
+    if (phones.status === "rejected") throw phones.reason;
+    return "undeliverable";
+  }
+
+  private async deliverToPhones(
+    message: NotificationMessage,
+    context: AdapterContext,
+  ): Promise<ExpoPushDelivery> {
     const registrations = await this.deliverableTokens(context.userId);
     const results = await Promise.allSettled(
       registrations.map((registration) => this.deliverTo(registration, message, context)),

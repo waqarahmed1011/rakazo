@@ -166,6 +166,10 @@ export const threadsRpc = {
       )
       .output(z.object({ ok: z.literal(true) })),
     /** Answers a tool's question card while its call waits; only the run's own user may. */
+    /** Answers a run's open approval card from a notification, which knows only the run. */
+    answerApproval: oc
+      .input(z.object({ runId: Id, answer: z.enum(["allow", "deny"]) }))
+      .output(z.object({ ok: z.literal(true) })),
     answerToolQuestion: oc
       .input(
         threadTarget.safeExtend({
@@ -251,6 +255,20 @@ export const threadsRpc = {
       )
       .output(z.object({ ok: z.literal(true) })),
     unregisterPush: oc.output(z.object({ ok: z.literal(true) })),
+    /** The server's Web Push key for installed web apps; null when the server has none. */
+    browserPushKey: oc.output(z.object({ publicKey: z.string().nullable() })),
+    /** Ties this browser's push subscription to the calling session. */
+    registerBrowserPush: oc
+      .input(
+        z.object({
+          endpoint: z.url().max(2048),
+          keys: z.object({ p256dh: z.string().min(1).max(256), auth: z.string().min(1).max(256) }),
+        }),
+      )
+      .output(z.object({ ok: z.literal(true) })),
+    unregisterBrowserPush: oc
+      .input(z.object({ endpoint: z.url().max(2048) }))
+      .output(z.object({ ok: z.literal(true) })),
     /**
      * Keeps this phone's live status card of the user's bots at work up to date. `following` is
      * false when the server cannot update the card or no bot is at work, so the app ends it.

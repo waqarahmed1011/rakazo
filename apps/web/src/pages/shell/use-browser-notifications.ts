@@ -8,6 +8,7 @@ import {
   deliverBrowserNotification as deliverNativeBrowserNotification,
   shouldNotifyBrowser,
 } from "../../lib/platform/browser-notifications";
+import { syncBrowserPush } from "../../lib/platform/browser-push";
 import { notificationIcon, prepareNotificationIcons } from "../../lib/platform/notification-icon";
 import { followStream } from "../../lib/query/follow-stream";
 import type { RpcClient } from "../../lib/query/rpc";
@@ -89,6 +90,10 @@ export function useBrowserNotifications(
   const meIdRef = useRef(meId);
   meIdRef.current = meId;
   useEffect(() => prepareNotificationIcons(bots), [bots]);
+  // A failed sync only means this browser is not reached while closed; the next load retries.
+  useEffect(() => {
+    void syncBrowserPush(rpc).catch(() => undefined);
+  }, [rpc]);
   const openChatRef = useRef(openChat);
   openChatRef.current = openChat;
   const rosterRef = useRef(roster);

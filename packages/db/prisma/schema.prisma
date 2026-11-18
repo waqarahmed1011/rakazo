@@ -109,6 +109,7 @@ model User {
   ticketComments              TicketComment[]              @relation("TicketCommentAuthorUser")
   pushRegistrations           PushRegistration[]
   callPushDevices             CallPushDevice[]
+  browserPushSubscriptions    BrowserPushSubscription[]
   workActivityTokens          WorkActivityToken[]
   workActivityStartTokens     WorkActivityStartToken[]
   trustedLinkSites            TrustedLinkSite[]
@@ -185,6 +186,20 @@ model CallPushDevice {
 
   @@index([userId, sessionId])
   @@map("call_push_devices")
+}
+
+/// A browser's push subscription for an installed web app, sealed and tied to the session that made it.
+model BrowserPushSubscription {
+  /// Digest of the push service endpoint, so one browser has one row.
+  id         String   @id
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sessionId  String
+  ciphertext String
+  updatedAt  DateTime @updatedAt
+
+  @@index([userId])
+  @@map("browser_push_subscriptions")
 }
 
 /// A phone's live status card for the user's bots at work. Rows go once no bot is working.
