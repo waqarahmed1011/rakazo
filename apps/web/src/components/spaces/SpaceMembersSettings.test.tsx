@@ -131,7 +131,7 @@ it("lets the owner invite and remove members but not leave", async () => {
   const rows = [...host.querySelectorAll('ul[aria-label="Members"] > li')];
   expect(rows.map((row) => row.textContent)).toEqual([
     "AAda LovelaceOwnerada@example.test",
-    "BBob Stonebob@example.testRemove",
+    "BBob Stonebob@example.testMake view-onlyRemove",
   ]);
   expect(buttonNamed("Copy invite link")).toBeTruthy();
   expect(buttonNamed("Leave space")).toBeUndefined();
@@ -232,7 +232,7 @@ it("adds someone from the organization, and keeps the link for anyone else", asy
   await vi.waitFor(() =>
     expect(
       [...host.querySelectorAll('ul[aria-label="Members"] > li')].map((row) => row.textContent),
-    ).toEqual(["AAda LovelaceOwnerada@example.test", "CCy Raycy@example.testRemove"]),
+    ).toEqual(["AAda LovelaceOwnerada@example.test", "CCy Raycy@example.testMake view-onlyRemove"]),
   );
 
   rpc.spaces.invites.create.mockResolvedValue({
@@ -271,7 +271,10 @@ it("never shows a Space's people once another Space is open, even after an add",
   );
   expect(
     [...host.querySelectorAll('ul[aria-label="Members"] > li')].map((row) => row.textContent),
-  ).toEqual(["AAda LovelaceOwnerada@example.test", "BBob Stonebob@example.testRemove"]);
+  ).toEqual([
+    "AAda LovelaceOwnerada@example.test",
+    "BBob Stonebob@example.testMake view-onlyRemove",
+  ]);
 });
 
 it("tags guests, and says before inviting someone by email that they are outside the organization", async () => {
@@ -291,7 +294,10 @@ it("tags guests, and says before inviting someone by email that they are outside
   });
   expect(
     [...host.querySelectorAll('ul[aria-label="Members"] > li')].map((row) => row.textContent),
-  ).toEqual(["AAda LovelaceOwnerada@example.test", "BBob StoneExternalbob@example.testRemove"]);
+  ).toEqual([
+    "AAda LovelaceOwnerada@example.test",
+    "BBob StoneExternalbob@example.testMake view-onlyRemove",
+  ]);
 
   await act(async () => buttonNamed("Invite by email")?.click());
   const notice = "Not in Acme. They'll only see this Space.";

@@ -41,6 +41,10 @@ export const spacesRpc = {
       remove: oc
         .input(z.object({ spaceId: Id, userId: Id }))
         .output(z.object({ ok: z.literal(true) })),
+      /** Space managers only. A viewer can chat and read but not change what the space shares. */
+      setRole: oc
+        .input(z.object({ spaceId: Id, userId: Id, role: z.enum(["member", "viewer"]) }))
+        .output(z.object({ ok: z.literal(true) })),
       /** Members only; an owner deletes the space instead. */
       leave: oc
         .input(z.object({ spaceId: Id }))

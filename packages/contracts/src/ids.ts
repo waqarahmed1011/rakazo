@@ -9,6 +9,8 @@ export const ActorSchema = z.object({
   email: z.string().email(),
   /** Deprecated wire field. App accounts have no deployment role; always false. */
   isDeploymentOwner: z.boolean(),
+  /** The signed-in member's role in this space, when the request resolved one. */
+  spaceRole: z.string().optional(),
 });
 export type Actor = z.infer<typeof ActorSchema>;
 

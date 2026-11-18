@@ -164,6 +164,21 @@ export function SpaceMembersSettings({
       else await copy(sent.url);
     },
   });
+  const changingRole = useSave({
+    save: (ask: { spaceId: string; userId: string; role: "member" | "viewer" }, client) =>
+      client.spaces.members.setRole(ask),
+    onSaved: (_saved, ask) =>
+      setMembers((current) =>
+        current
+          ? {
+              ...current,
+              members: current.members.map((item) =>
+                item.userId === ask.userId ? { ...item, role: ask.role } : item,
+              ),
+            }
+          : current,
+      ),
+  });
   // A failure to add or invite someone to another Space stays with that Space.
   const addError =
     adding.input?.spaceId === space.id && adding.error
@@ -279,6 +294,16 @@ export function SpaceMembersSettings({
                       }
                     : undefined
                 }
+                onRoleChange={
+                  canManage && member.role !== "owner"
+                    ? () =>
+                        changingRole.run({
+                          spaceId: space.id,
+                          userId: member.userId,
+                          role: member.role === "viewer" ? "member" : "viewer",
+                        })
+                    : undefined
+                }
               />
             ))}
           </ul>
@@ -288,6 +313,11 @@ export function SpaceMembersSettings({
           </p>
         )}
       </SettingsGroup>
+      {changingRole.error ? (
+        <p role="alert" className="text-body-sm text-destructive">
+          {errorText(changingRole.error, t`Could not change role`)}
+        </p>
+      ) : null}
       {canManage && email !== null ? (
         <form
           className="space-y-1.5"
@@ -364,7 +394,15 @@ export function SpaceMembersSettings({
   );
 }
 
-function MemberRow({ member, onRemove }: { member: SpaceMember; onRemove?: () => void }) {
+function MemberRow({
+  member,
+  onRemove,
+  onRoleChange,
+}: {
+  member: SpaceMember;
+  onRemove?: () => void;
+  onRoleChange?: () => void;
+}) {
   const { t } = useLingui();
   const name = accountDisplay(member, member.email).label;
   return (
@@ -375,6 +413,11 @@ function MemberRow({ member, onRemove }: { member: SpaceMember; onRemove?: () =>
           {member.role === "owner" ? (
             <Badge variant="secondary">
               <Trans>Owner</Trans>
+            </Badge>
+          ) : null}
+          {member.role === "viewer" ? (
+            <Badge variant="outline">
+              <Trans>View only</Trans>
             </Badge>
           ) : null}
           {member.guest ? (
@@ -394,6 +437,18 @@ function MemberRow({ member, onRemove }: { member: SpaceMember; onRemove?: () =>
               <MoreHorizontal />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-auto min-w-36">
+              {onRoleChange ? (
+                <>
+                  <DropdownMenuItem onClick={onRoleChange}>
+                    {member.role === "viewer" ? (
+                      <Trans>Allow edits</Trans>
+                    ) : (
+                      <Trans>Make view-only</Trans>
+                    )}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                </>
+              ) : null}
               <DropdownMenuItem variant="destructive" onClick={onRemove}>
                 <Trans>Remove</Trans>
               </DropdownMenuItem>

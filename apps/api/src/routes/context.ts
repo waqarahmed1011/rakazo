@@ -63,6 +63,7 @@ import { createModelConnector, prepareAllowedThinkingLevels } from "../models/mo
 import type { RouterDeps } from "../router.js";
 import { createRoutineAnnouncer } from "../routines/routines.js";
 import { spaceChangesFor } from "../spaces/space-change-procedures.js";
+import { SpaceReadOnlyError, spaceRoleMayCall } from "../spaces/viewer-access.js";
 import {
   ModelCreditOfferingUnavailableError,
   UnsupportedThinkingLevelError,
@@ -592,6 +593,7 @@ export function createRouterContext(deps: RouterDeps) {
   });
 
   const authed = os.use(signedIn).use(async ({ context, next, path }, input) => {
+    if (!spaceRoleMayCall(context.actor.spaceRole, path)) throw new SpaceReadOnlyError();
     const result = await next();
     const event = procedureSecurityEvent(path, input, context.actor);
     if (event) await recordSecurityEvent(event);

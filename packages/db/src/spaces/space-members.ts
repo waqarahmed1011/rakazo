@@ -107,9 +107,46 @@ export async function requireSpaceOwner(
 ): Promise<void> {
   const membership = await db.spaceMember.findUnique({
     where: { spaceId_userId: { spaceId: input.spaceId, userId: input.userId } },
-    select: { role: true },
+    select: { role: true, member: { select: { role: true } } },
   });
-  if (!membership || !isOwnerRole(membership.role)) throw new SpaceOwnerRequiredError();
+  if (!membership || !managesSpace(membership.role, membership.member.role)) {
+    throw new SpaceOwnerRequiredError();
+  }
+}
+
+/** The space's owner, or an owner or admin of its organization who is in the space. */
+function managesSpace(spaceRole: string, organizationRole: string): boolean {
+  if (isOwnerRole(spaceRole)) return true;
+  return organizationRole
+    .split(",")
+    .map((value) => value.trim())
+    .some((value) => value === "owner" || value === "admin");
+}
+
+function shownSpaceRole(role: string): "owner" | "member" | "viewer" {
+  if (isOwnerRole(role)) return "owner";
+  return role === SPACE_VIEWER_ROLE ? "viewer" : "member";
+}
+
+export const SPACE_VIEWER_ROLE = "viewer";
+
+/**
+ * Space managers only: makes someone in the space a member or a read-only viewer. The owner's
+ * role never changes, and nobody changes their own.
+ */
+export async function setSpaceMemberRole(
+  prisma: PrismaClient,
+  input: SpaceRef & { targetUserId: string; role: "member" | "viewer" },
+): Promise<void> {
+  await requireSpaceOwner(prisma, input);
+  if (input.targetUserId === input.userId) throw new SpaceOwnerRequiredError();
+  const target = await prisma.spaceMember.findUnique({
+    where: { spaceId_userId: { spaceId: input.spaceId, userId: input.targetUserId } },
+    select: { id: true, role: true },
+  });
+  if (!target) throw new SpaceMemberNotFoundError();
+  if (isOwnerRole(target.role)) throw new CannotRemoveSpaceOwnerError();
+  await prisma.spaceMember.update({ where: { id: target.id }, data: { role: input.role } });
 }
 
 function hashInviteToken(token: string): string {
@@ -126,7 +163,7 @@ export async function listSpaceMembers(
     name: string;
     email: string;
     image: string | null;
-    role: "owner" | "member";
+    role: "owner" | "member" | "viewer";
     guest: boolean;
   }>;
   canManage: boolean;
@@ -156,11 +193,11 @@ export async function listSpaceMembers(
       name: row.member.user.name,
       email: row.member.user.email,
       image: row.member.user.image,
-      role: isOwnerRole(row.role) ? ("owner" as const) : ("member" as const),
+      role: shownSpaceRole(row.role),
       guest: row.member.role === GUEST_ROLE,
     }))
     .sort((a, b) => Number(b.role === "owner") - Number(a.role === "owner"));
-  const canManage = isOwnerRole(self.role);
+  const canManage = managesSpace(self.role, self.member.role);
   if (!canManage) return { spaceName: self.space.name, members, canManage, openInvites: 0 };
   // Only a full member of the organization sees who else is in it: an owner whose removal is
   // still finishing is a guest already.

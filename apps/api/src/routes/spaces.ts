@@ -24,6 +24,7 @@ import {
   runAsTenant,
   SPACE_DELETION_CLAIM_TIMEOUT_MS,
   SpaceNotFoundError,
+  setSpaceMemberRole,
   setSpaceSettingOverride,
   spaceSettingOverrides,
 } from "@rakazo/db";
@@ -189,6 +190,24 @@ export function spacesRoutes(ctx: RouterContext) {
               { spaceId: input.spaceId, userId: context.actor.userId },
               departure,
             );
+            return { ok: true as const };
+          }),
+        ),
+        setRole: authed.spaces.members.setRole.handler(({ context, input }) =>
+          asMemberOf(deps.prisma, context.actor, input.spaceId, async () => {
+            await setSpaceMemberRole(deps.prisma, {
+              spaceId: input.spaceId,
+              userId: context.actor.userId,
+              targetUserId: input.userId,
+              role: input.role,
+            });
+            await recordAuditEvent({
+              action: "space.member.role_changed",
+              actor: { type: "user", id: context.actor.userId },
+              spaceId: input.spaceId,
+              target: { type: "user", id: input.userId },
+              metadata: { role: input.role },
+            });
             return { ok: true as const };
           }),
         ),

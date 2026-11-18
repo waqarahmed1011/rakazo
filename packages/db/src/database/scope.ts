@@ -38,7 +38,7 @@ export async function requireMembership(
   const membership = requestedSpaceId
     ? await prisma.spaceMember.findFirst({
         where: { userId: user.id, spaceId: requestedSpaceId },
-        select: { spaceId: true },
+        select: { spaceId: true, role: true },
       })
     : await openedMembership(prisma, user.id, session);
   if (!membership) {
@@ -49,6 +49,7 @@ export async function requireMembership(
     spaceId: membership.spaceId,
     email: user.email,
     isDeploymentOwner: false,
+    spaceRole: membership.role,
   };
 }
 
@@ -73,7 +74,7 @@ function firstMembership(prisma: PrismaClient, userId: string, organizationId: s
   return prisma.spaceMember.findFirst({
     where: { userId, ...(organizationId ? { organizationId } : {}), space: { deletingAt: null } },
     orderBy: [{ space: { isDefault: "desc" } }, { createdAt: "asc" }, { id: "asc" }],
-    select: { spaceId: true },
+    select: { spaceId: true, role: true },
   });
 }
 

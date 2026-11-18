@@ -69,7 +69,7 @@ export const SpaceSchema = z.object({
 });
 export type Space = z.infer<typeof SpaceSchema>;
 
-export const SpaceRoleSchema = z.enum(["owner", "member"]);
+export const SpaceRoleSchema = z.enum(["owner", "member", "viewer"]);
 
 export const SpaceMemberSchema = PersonSchema.extend({
   role: SpaceRoleSchema,
@@ -81,7 +81,7 @@ export type SpaceMember = z.infer<typeof SpaceMemberSchema>;
 export const SpaceMembersSchema = z.object({
   spaceName: z.string(),
   members: z.array(SpaceMemberSchema),
-  /** True when the current member owns the space and may invite or remove people. */
+  /** True when the current member owns the space, or is an organization admin, and may manage people. */
   canManage: z.boolean(),
   /** For the owner: links created but not yet used or expired. */
   openInvites: z.number().int().nonnegative().optional(),
