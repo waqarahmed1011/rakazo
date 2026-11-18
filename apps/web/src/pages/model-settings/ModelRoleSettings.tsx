@@ -36,10 +36,13 @@ import { GripVertical, MoreHorizontal, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { thinkingLevelLabel } from "../../lib/models/model-catalog";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { spaceQueries } from "../../lib/query/query";
 import { useSpaceRpc } from "../../lib/query/space-rpc";
 import type { ConnectableProvider, RoleModelOption } from "./role-model-picker";
 import { RoleModelPicker } from "./role-model-picker";
+
+const appName = instanceName();
 
 export type ModelRoleConnectIntent = {
   /** Only the main role's empty first slot takes the new connection's model on connect. */
@@ -207,7 +210,7 @@ export function ModelRoleSettings({
     }),
     creditOfferingId: choice.creditOfferingId,
     providerName: choice.creditOfferingId
-      ? t`Rakazo credits`
+      ? t`${appName} credits`
       : choice.credentialId
         ? choice.connectionName
         : providerLabel(choice.provider),
@@ -222,7 +225,7 @@ export function ModelRoleSettings({
         )
       : [];
   const providerName = (choice: ModelRoleChoice) =>
-    (choice.creditOfferingId ? t`Rakazo credits` : undefined) ||
+    (choice.creditOfferingId ? t`${appName} credits` : undefined) ||
     (choice.credentialId &&
       options.find((option) => option.credentialId === choice.credentialId)?.providerName) ||
     providerLabel(choice.provider);

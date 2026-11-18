@@ -10,10 +10,13 @@ import {
 } from "@rakazo/core";
 import { getActiveUiLocale } from "../locale/i18n.js";
 import { desktopBridge } from "../platform/desktop.js";
+import { instanceName } from "../platform/instance-identity";
 import { selectedSpaceId, withSpaceHeaders } from "../query/rpc.js";
 import { errorText, voiceAccountErrorText } from "../query/user-error.js";
 import { DesktopSpeechRecognition } from "./desktop-speech.js";
 import { ensureVoiceConsent, invalidateVoiceConsent } from "./voice-consent.js";
+
+const appName = instanceName();
 
 export type DictationMode = "hold" | "endpoint";
 
@@ -354,7 +357,7 @@ export class Dictation {
         error:
           // macOS asks only once; after a refusal, only System Settings can allow it again.
           code === "not-allowed" && desktopBridge()?.speech
-            ? t`Allow Rakazo to use Speech Recognition and the microphone in System Settings.`
+            ? t`Allow ${appName} to use Speech Recognition and the microphone in System Settings.`
             : code
               ? t`Dictation failed: ${code}`
               : t`Dictation failed.`,

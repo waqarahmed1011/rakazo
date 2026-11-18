@@ -1,4 +1,5 @@
 import { buildSkillMd } from "@rakazo/core";
+import { isWhiteLabeled } from "@rakazo/core/node/product-name";
 
 const RAKAZO_DOCS: ReadonlyArray<readonly [topics: string, url: string]> = [
   ["Getting started, first bot, what Rakazo does", "https://rakazo.com/docs.md"],
@@ -76,8 +77,10 @@ export const BUILTIN_AGENT_SKILLS: Array<{
   name: string;
   description: string;
   content: string;
-}> = SKILLS.map(({ name, description, body }) => ({
-  name,
-  description,
-  content: buildSkillMd({ name, description, body }),
-}));
+}> = SKILLS.filter((skill) => !(isWhiteLabeled() && skill.name === "Rakazo")).map(
+  ({ name, description, body }) => ({
+    name,
+    description,
+    content: buildSkillMd({ name, description, body }),
+  }),
+);

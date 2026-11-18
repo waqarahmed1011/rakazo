@@ -62,6 +62,8 @@ x-app-environment: &app-environment # Runtime
   SMTP_URL:
   EMAIL_FROM:
   EMAIL_REPLY_TO:
+  # Product name in bot prompts, emails and passkey prompts; also hides upstream links and help.
+  INSTANCE_NAME:
   WELCOME_EMAIL_ENABLED:
   RAKAZO_SECRETS_ALLOW_PRIVATE_HTTP:
   EXPO_ACCESS_TOKEN:

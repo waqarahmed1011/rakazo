@@ -1,6 +1,7 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import { Button, buttonVariants, toast } from "@rakazo/ui-web";
 import { Star } from "lucide-react";
+import { isWhiteLabeled } from "../../../lib/platform/instance-identity";
 
 // Separate keys so a count written by another tab can never undo a dismissal.
 export const STAR_PROMPT_SENT_KEY = "rakazo.githubStarPrompt.sent";
@@ -19,7 +20,7 @@ function dismiss() {
 
 /** Counts a sent message and, after five, asks once for a GitHub star until dismissed. */
 export function recordMessageSent(): void {
-  if (shownThisSession) return;
+  if (shownThisSession || isWhiteLabeled()) return;
   try {
     if (localStorage.getItem(STAR_PROMPT_DISMISSED_KEY) !== null) return;
     const sent = (Number(localStorage.getItem(STAR_PROMPT_SENT_KEY)) || 0) + 1;

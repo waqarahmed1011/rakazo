@@ -6,9 +6,11 @@ import {
   ModelPreflightFeedback,
   modelPreflightTestingLabel,
 } from "../../components/models/ModelConnectionPreflightNotice";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { CompatibleKeyField } from "./compatible-key-field";
-
 import type { ModelSettingsState } from "./use-model-settings";
+
+const appName = instanceName();
 
 export function ConnectionControls({
   acceptsKey,
@@ -348,8 +350,8 @@ export function ConnectionControls({
       {selected?.auth === "oauth" && !subscriptionSignIn ? (
         <p className="mt-5 text-body-sm leading-[1.5] text-muted-foreground first:mt-0">
           <Trans>
-            This subscription sign-in is not available in Rakazo yet. Use a deployment credential or
-            choose another provider.
+            This subscription sign-in is not available in {appName} yet. Use a deployment credential
+            or choose another provider.
           </Trans>
         </p>
       ) : null}

@@ -1,6 +1,7 @@
 /** @jsxRuntime automatic */
 import type { TransactionalEmail } from "@rakazo/adapter-kit";
 import { displayName, matchUiLocale, textDirectionForLocale, translate } from "@rakazo/core";
+import { productName } from "@rakazo/core/node/product-name";
 import { webLightTokens as lightTokens, webDarkTokens } from "@rakazo/ui-tokens";
 import type { ReactNode } from "react";
 import { Fragment } from "react";
@@ -90,8 +91,11 @@ export type EmailLocaleOf = (
 /** Translates email copy into `locale`, filling `{name}` placeholders. */
 export function emailText(locale: string) {
   const catalog = CATALOGS[locale];
-  return (text: string, values?: Record<string, string | number>) =>
-    translate(catalog, text, values);
+  const name = productName();
+  return (text: string, values?: Record<string, string | number>) => {
+    const said = translate(catalog, text, values);
+    return name === "Rakazo" ? said : said.replaceAll("Rakazo", name);
+  };
 }
 
 export function greeting(say: ReturnType<typeof emailText>, name: string): string {

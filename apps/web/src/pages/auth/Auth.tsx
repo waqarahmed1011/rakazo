@@ -28,9 +28,9 @@ import { fetchAuthCapabilities } from "../../lib/auth/auth-capabilities";
 import { newAccountDestination, signInNext } from "../../lib/auth/sign-in-next";
 import { runSsoFlow } from "../../lib/auth/sso-flow";
 import { desktopBridge } from "../../lib/platform/desktop";
+import { instanceIcon, instanceName } from "../../lib/platform/instance-identity";
 import { clearSpaceSelection } from "../../lib/query/rpc";
 import { authErrorText, credentialIssueText } from "../../lib/query/user-error";
-import { instanceIcon, instanceName } from "../../lib/platform/instance-identity";
 
 const appName = instanceName();
 const appIcon = instanceIcon();
@@ -98,7 +98,7 @@ export function AuthPage({ mode }: { mode: AuthMode }) {
     sent || codeStep ? (
       <Trans>Check your email</Trans>
     ) : chooser ? (
-      <Trans>Welcome to Rakazo</Trans>
+      <Trans>Welcome to {appName}</Trans>
     ) : presented && mode === "in" ? (
       <Trans>Welcome back</Trans>
     ) : mode === "in" ? (

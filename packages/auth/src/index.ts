@@ -17,6 +17,7 @@ import {
   signupAttributionFromHeaders,
   signupPolicyFromEnv,
 } from "@rakazo/core";
+import { productName } from "@rakazo/core/node/product-name";
 import type { PrismaClient, SecurityEventType } from "@rakazo/db";
 import {
   bootstrapUserSpace,
@@ -289,7 +290,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
     returned: false,
   } as const;
   const auth = betterAuth({
-    appName: "Rakazo",
+    appName: productName(),
     logger: env.logger,
     secret: env.secret,
     baseURL: env.baseURL,
@@ -554,7 +555,7 @@ export function createAuth(prisma: PrismaClient, env: AuthEnv) {
         ? [
             passkey({
               rpID: relyingParty.rpID,
-              rpName: "Rakazo",
+              rpName: productName(),
               origin: relyingParty.origins,
             }) as BetterAuthPlugin,
           ]

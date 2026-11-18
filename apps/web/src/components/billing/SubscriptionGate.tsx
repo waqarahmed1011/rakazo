@@ -7,12 +7,15 @@ import { useSearchParams } from "react-router-dom";
 import { fetchAuthCapabilities } from "../../lib/auth/auth-capabilities";
 import { loadBillingStatus } from "../../lib/billing/referral";
 import { peekInitialBootstrap } from "../../lib/bootstrap";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { lazyComponent } from "../../lib/platform/preload-recovery";
 import type { SupportChat } from "../../lib/platform/support-chat";
 import { useSupportChat } from "../../lib/platform/support-chat";
 import type { RpcClient } from "../../lib/query/rpc";
 import { createSpaceRpc, rpc, SPACE_SELECTED_EVENT, selectedSpaceId } from "../../lib/query/rpc";
 import { useEventListener } from "../../lib/use-event-listener";
+
+const appName = instanceName();
 
 const PaywallPage = lazyComponent(() =>
   import("../../pages/auth/Paywall").then((module) => module.PaywallPage),
@@ -169,7 +172,7 @@ export function SubscriptionGate({
         // Over the app rather than replacing it, so closing keeps its state.
         <Dialog open={plansOpen} onOpenChange={setPlansOpen}>
           <DialogContent
-            aria-label={t`Choose how to use Rakazo`}
+            aria-label={t`Choose how to use ${appName}`}
             className="inset-0 top-0 left-0 block h-dvh max-w-none translate-x-0 translate-y-0 overflow-y-auto rounded-none bg-background p-0 ring-0 sm:max-w-none"
           >
             <Suspense fallback={fallback}>

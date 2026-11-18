@@ -14,3 +14,8 @@ export function instanceName(): string {
 export function instanceIcon(): string | undefined {
   return meta("instance-icon");
 }
+
+/** True when this server runs under its own name, so upstream links and prompts are hidden. */
+export function isWhiteLabeled(): boolean {
+  return meta("instance-name") !== undefined;
+}

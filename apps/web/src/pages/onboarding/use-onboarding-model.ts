@@ -15,8 +15,11 @@ import { providerDisplayName } from "../../lib/models/localized-provider-hint";
 import type { ModelCatalogEntry } from "../../lib/models/model-auth";
 import { useModelOAuthSignIn } from "../../lib/models/use-model-oauth-signin";
 import { analyticsSurface } from "../../lib/platform/desktop";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { rpc } from "../../lib/query/rpc";
 import { useModelConnectionForm } from "../model-settings/use-model-connection-form";
+
+const appName = instanceName();
 
 /** Rakazo credits sit among the providers as the one choice that needs no account of its own. */
 const CREDITS_OPTION = "__rakazo_credits__";
@@ -147,7 +150,7 @@ export function useOnboardingModel({
       return providerDisplayName(id, byId.get(id)?.providerName ?? id, auth);
     };
     const main = [
-      ...(billingEnabled ? [{ value: CREDITS_OPTION, label: t`Rakazo credits` }] : []),
+      ...(billingEnabled ? [{ value: CREDITS_OPTION, label: t`${appName} credits` }] : []),
       ...MAIN_PROVIDER_OPTIONS.filter((option) => byId.has(option.provider)).map((option) => ({
         value: providerOptionValue(option.provider, option.auth),
         label: optionLabel(option.provider, option.auth),

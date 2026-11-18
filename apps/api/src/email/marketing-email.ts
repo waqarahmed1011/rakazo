@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { TransactionalEmailProvider } from "@rakazo/adapter-kit";
 import { emailLocale, welcomeEmail } from "@rakazo/auth";
+import { isWhiteLabeled } from "@rakazo/core/node/product-name";
 import type { PrismaClient } from "@rakazo/db";
 import { runAsSystem } from "@rakazo/db";
 import { Hono } from "hono";
@@ -39,6 +40,8 @@ export async function sendWelcomeEmail(
   /** The first sign-in comes before any app reports a language, so its browser's stands in. */
   headers?: Headers,
 ): Promise<void> {
+  // The welcome email is about upstream's own apps and community, not the instance's product.
+  if (isWhiteLabeled()) return;
   try {
     const user = await deps.prisma.user.findFirst({
       where: { id: userId, createdAt: { gte: new Date(Date.now() - WELCOME_WINDOW_MS) } },

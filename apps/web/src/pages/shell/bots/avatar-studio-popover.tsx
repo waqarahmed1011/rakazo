@@ -28,6 +28,9 @@ import { Button } from "@rakazo/ui-web/components/ui/button";
 import { Check, Pencil, Upload, X } from "lucide-react";
 import type { ClipboardEvent, DragEvent } from "react";
 import { useRef, useState } from "react";
+import { isWhiteLabeled } from "../../../lib/platform/instance-identity";
+
+const whiteLabeled = isWhiteLabeled();
 
 /**
  * The shape grid and color row for a bot's look. With `organicIdentities`, the grid also offers
@@ -331,7 +334,7 @@ export function AvatarStudioPopover({
                 identity={identity}
                 avatarSet={avatarSet}
                 onChange={(next) => onChange(next)}
-                onAvatarSetChange={(set, next) => onChange(next, set)}
+                onAvatarSetChange={whiteLabeled ? undefined : (set, next) => onChange(next, set)}
               />
             </TabsContent>
             <TabsContent value="upload">

@@ -54,12 +54,15 @@ import {
   formatBillingPrice,
 } from "../../lib/billing/billing";
 import { analyticsSurface, desktopBridge } from "../../lib/platform/desktop";
+import { instanceName } from "../../lib/platform/instance-identity";
 import type { RpcClient } from "../../lib/query/rpc";
 import { rpc } from "../../lib/query/rpc";
 import { AccountMenu } from "../account/AccountMenu";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { InfoTooltip } from "../InfoTooltip";
 import { ComputerUsage } from "./ComputerUsage";
+
+const appName = instanceName();
 
 type CreditAmount = (typeof MODEL_CREDIT_AMOUNTS)[number];
 type TierOffer = NonNullable<BillingStatus["byokTiers"]>[number];
@@ -485,7 +488,7 @@ export function CreditChoice({
         <AccountMenu disabled={pending} signingOut={signingOut} onLogOut={() => void logOut()} />
       )}
       <h1 className={cn("text-heading1 font-medium", tiers.length > 1 && "text-center")}>
-        <Trans>Choose how to use Rakazo</Trans>
+        <Trans>Choose how to use {appName}</Trans>
       </h1>
       {tiers.length > 1 ? (
         <TierPlans
@@ -1065,7 +1068,7 @@ export function ModelCreditsSettings({
             })
           }
         >
-          <Trans>Use Rakazo credits</Trans>
+          <Trans>Use {appName} credits</Trans>
         </Button>
       ) : null}
       {status.canManage && status.funding !== "byok" && (!recurring || status.cancelAtPeriodEnd) ? (

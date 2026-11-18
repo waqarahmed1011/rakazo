@@ -34,6 +34,11 @@
       "development": "./src/node/load-root-env.ts",
       "default": "./src/node/load-root-env.ts"
     },
+    "./node/product-name": {
+      "types": "./src/node/product-name.ts",
+      "development": "./src/node/product-name.ts",
+      "default": "./src/node/product-name.ts"
+    },
     "./node/shutdown-signals": {
       "types": "./src/node/shutdown-signals.ts",
       "development": "./src/node/shutdown-signals.ts",

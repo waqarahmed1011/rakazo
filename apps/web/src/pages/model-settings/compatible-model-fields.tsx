@@ -11,9 +11,11 @@ import {
 } from "@rakazo/ui-web";
 import { ModelPreflightFeedback } from "../../components/models/ModelConnectionPreflightNotice";
 import { ModelHeadersEditor } from "../../components/models/ModelHeadersEditor";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { useListSearch } from "../../lib/use-list-search";
-
 import type { ModelSettingsState } from "./use-model-settings";
+
+const appName = instanceName();
 
 export function CompatibleModelFields({
   resetOpenAiCompatibleProbe,
@@ -119,7 +121,7 @@ export function CompatibleModelFields({
           summary={<Trans>Setup help</Trans>}
         >
           <p className="mt-1">
-            {t`Paste the OpenAI-compatible address from your server. Rakazo adds /v1 if needed.`}
+            {t`Paste the OpenAI-compatible address from your server. ${appName} adds /v1 if needed.`}
           </p>
         </Disclosure>
       ) : null}

@@ -13,11 +13,14 @@ import { lazyOverlay } from "../../components/ErrorBoundary";
 import { setLabs } from "../../lib/bootstrap";
 import { invalidateVoiceConsent } from "../../lib/calls/voice-consent";
 import type { connectedAppMarks } from "../../lib/integrations/connected-apps";
+import { isWhiteLabeled } from "../../lib/platform/instance-identity";
 import type { SpaceQueries } from "../../lib/query/query";
 import { queryClient } from "../../lib/query/query";
 import type { createSpaceRpc, RpcClient } from "../../lib/query/rpc";
 import { FALLBACK_BOT_COLOR } from "./chat/chat-shared";
 import type { ShellOverlay } from "./shell-overlay-url";
+
+const whiteLabeled = isWhiteLabeled();
 
 const SettingsOverlay = lazyOverlay(() =>
   import("../settings/SettingsOverlay").then((module) => module.SettingsOverlay),
@@ -210,15 +213,19 @@ export function SettingsOverlays({
             setBootstrapMe((prev) => (prev ? { ...prev, timezone: nextMe.timezone } : nextMe));
           }}
           botAvatarSet={bootstrapMe?.botAvatarSet}
-          onBotAvatarSetChange={async (botAvatarSet) => {
-            const nextMe = await rpc.preferences.update({ botAvatarSet });
-            setBootstrapMe((prev) =>
-              prev ? { ...prev, botAvatarSet: nextMe.botAvatarSet } : nextMe,
-            );
-            // Unpinned bots were restyled with it. The save already succeeded, so a failed
-            // refresh only waits for the roster's next re-read.
-            void refreshSpaces().catch(() => undefined);
-          }}
+          onBotAvatarSetChange={
+            whiteLabeled
+              ? undefined
+              : async (botAvatarSet) => {
+                  const nextMe = await rpc.preferences.update({ botAvatarSet });
+                  setBootstrapMe((prev) =>
+                    prev ? { ...prev, botAvatarSet: nextMe.botAvatarSet } : nextMe,
+                  );
+                  // Unpinned bots were restyled with it. The save already succeeded, so a failed
+                  // refresh only waits for the roster's next re-read.
+                  void refreshSpaces().catch(() => undefined);
+                }
+          }
           labs={parseLabs(bootstrapMe?.labs)}
           labsAvailable={parseLabs(bootstrapMe?.labsAvailable)}
           onLabsChange={async (labs, client) => {

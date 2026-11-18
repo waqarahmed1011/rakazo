@@ -8,6 +8,7 @@ import {
   refreshSandboxFromServer,
   sandboxCheckFailureMessage,
 } from "../../lib/computers/computer-sandbox";
+import { isWhiteLabeled } from "../../lib/platform/instance-identity";
 import { SuccessPop } from "../ai/primitives";
 
 export { computersAreUnavailable } from "../../lib/computers/computer-sandbox";
@@ -124,14 +125,16 @@ export function ComputersUnavailableHint({
               <Trans>Open computer settings</Trans>
             </Button>
           ) : null}
-          <a
-            className={buttonVariants({ variant: "ghost", size: "sm" })}
-            href="https://github.com/elie222/rakazo/blob/main/docs/self-host-sandbox-providers.md"
-            target="_blank"
-            rel="noreferrer"
-          >
-            <Trans>Setup help</Trans>
-          </a>
+          {isWhiteLabeled() ? null : (
+            <a
+              className={buttonVariants({ variant: "ghost", size: "sm" })}
+              href="https://github.com/elie222/rakazo/blob/main/docs/self-host-sandbox-providers.md"
+              target="_blank"
+              rel="noreferrer"
+            >
+              <Trans>Setup help</Trans>
+            </a>
+          )}
         </div>
       ) : null}
     </div>
