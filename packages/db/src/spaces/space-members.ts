@@ -851,6 +851,7 @@ async function departSpace(
               nextRunAt: null,
               watchState: Prisma.DbNull,
               accountFailures: 0,
+              resumeOnRestore: false,
             },
           });
 

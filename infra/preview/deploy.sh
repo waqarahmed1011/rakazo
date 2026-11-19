@@ -4,13 +4,17 @@
 # the image only moves from the local Docker daemon to the host's registry.
 #
 # Env: PR, HEAD_SHA, IMAGE (local tag), FLY_API_TOKEN, FLY_ORG, REGION, GH_TOKEN, REPO,
-# APP_PREFIX (default rakazo-pr).
+# APP_PREFIX (default rakazo-pr), MACHINE_HIGH_WATER (default 90).
 set -euo pipefail
 
-[[ $PR =~ ^[0-9]+$ ]] || { echo "Bad pull request number" >&2; exit 1; }
+[[ $PR =~ ^[1-9][0-9]*$ ]] || { echo "Bad pull request number" >&2; exit 1; }
 [[ $HEAD_SHA =~ ^[0-9a-f]{40}$ ]] || { echo "Bad commit" >&2; exit 1; }
 app="${APP_PREFIX:-rakazo-pr}-$PR"
 here=$(cd "$(dirname "$0")" && pwd)
+
+if ! python3 "$here/reclaim-capacity.py"; then
+  echo "::warning::Could not reclaim Fly preview capacity. Continuing with the deploy."
+fi
 
 flyctl status --app "$app" > /dev/null 2>&1 || flyctl apps create "$app" --org "$FLY_ORG"
 if [[ $(flyctl volumes list --app "$app" --json | jq length) == 0 ]]; then

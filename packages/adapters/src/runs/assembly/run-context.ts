@@ -18,8 +18,11 @@ import type {
   ToolStepCall,
 } from "@rakazo/contracts";
 import type { ToolStepOutcome } from "@rakazo/core";
-import { createStreamingRedactor } from "@rakazo/core";
-import { toolEffectIdempotencyKey } from "@rakazo/core/node/approval-effect-key";
+import { createStreamingRedactor, toolResultTaintsRun } from "@rakazo/core";
+import {
+  isToolEffectIdempotencyKey,
+  toolEffectIdempotencyKey,
+} from "@rakazo/core/node/approval-effect-key";
 import type { Bot, Computer, effectiveMemoryScope, Run, Task, Thread } from "@rakazo/db";
 import { dropRunTurnCheckpoint, saveRunTurnCheckpoint } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -31,6 +34,7 @@ import {
   approvalPausedToolResult,
   approvedEffectOccurrence,
 } from "../../approvals/approval-effect.js";
+import { appendOutsideText } from "../../approvals/review-target-sources.js";
 import type { ComputerExecutionLease } from "../../computers/computer-lifecycle.js";
 import type { UnchangedVisualStreak } from "../../computers/screens/computer-tools.js";
 import type { selectRunConnections } from "../../integrations/connection-context.js";
@@ -211,6 +215,12 @@ export interface RunState {
    */
   tainted: boolean;
   /**
+   * The text of the outside content this run read (tool results, the task of a run someone else
+   * started, replayed history), normalized and capped, so Auto Review can tell which targets of a call only that
+   * content named (see outsideOnlyTargets).
+   */
+  outsideText: string;
+  /**
    * The instructions this attempt's model works from: the attempt-start snapshot its prompt
    * was built with, restored from the turn checkpoint on resume, and advanced only after a
    * successful own-instruction write in this attempt. Own instruction writes guard on it, so
@@ -254,6 +264,7 @@ export interface RunComputerContext {
 
 export interface RunSource {
   ownerStartedRun: boolean;
+  meetingChat: boolean;
   messagingChannelRun: boolean;
   channelId: string | undefined;
   historySearchBeforeSeq: number;
@@ -427,9 +438,14 @@ export async function isRunTainted(ctx: RunContext) {
   return state.tainted;
 }
 
-/** Fresh outside input applies the existing action protections for this run. */
-export async function markReadOutsideContent(ctx: RunContext) {
+/**
+ * Fresh outside input applies the existing action protections for this run, and its text is kept
+ * so Auto Review can tell which targets of a later call only it named.
+ */
+export async function markReadOutsideContent(ctx: RunContext, content?: unknown) {
   ctx.state.tainted = true;
+  if (content !== undefined)
+    ctx.state.outsideText = appendOutsideText(ctx.state.outsideText, content);
 }
 
 /** A change landed after this attempt's snapshot; only a fresh run can apply the rewrite. */
@@ -450,6 +466,26 @@ export function nextMutatingEffectOccurrence(
   const effects = ctx.state.effects;
   const fingerprint = toolEffectIdempotencyKey(ctx.runId, toolName, args);
   const approved = approvedKey ? approvedEffectOccurrence(approvedKey, fingerprint) : undefined;
+  // An edited approval keeps its original identity so a saved pre-edit call can recover after
+  // execution. Reserve that occurrence when there was no saved turn to reserve it for us.
+  if (
+    approved === undefined &&
+    approvedKey &&
+    isToolEffectIdempotencyKey(approvedKey, ctx.runId, toolName)
+  ) {
+    const prefix = `${ctx.runId}:${toolName}:`;
+    const [digest] = approvedKey.slice(prefix.length).split(":");
+    const originalFingerprint = prefix + digest;
+    const originalOccurrence = approvedEffectOccurrence(approvedKey, originalFingerprint) ?? 0;
+    if ((effects.counts.get(originalFingerprint) ?? 0) <= originalOccurrence) {
+      effects.occurrences.push({
+        executionId,
+        fingerprint: originalFingerprint,
+        occurrence: originalOccurrence,
+      });
+      effects.counts.set(originalFingerprint, originalOccurrence + 1);
+    }
+  }
   const previous = effects.restoredPending;
   if (previous?.executionId === executionId) {
     effects.restoredPending = undefined;
@@ -510,6 +546,10 @@ export function restoreTurnCheckpointEffects(
   const effects = ctx.state.effects;
   try {
     const saved = restoreTurnCheckpoint(turnCheckpoint, model);
+    // The saved turn's tool results are outside content this run already read.
+    for (const message of saved.messages)
+      if (message.role === "toolResult" && toolResultTaintsRun(message.toolName))
+        ctx.state.outsideText = appendOutsideText(ctx.state.outsideText, message.content);
     const unresolved = new Set(unresolvedTurnCheckpointCalls(saved.messages));
     const namedTools = namedAgentTools(partitionTools(ctx.tools.offered).listed);
     const available = new Set(namedTools.map((tool) => tool.name));

@@ -4,10 +4,10 @@ import type { OrganizationInvitationPreview } from "@rakazo/contracts";
 import { Button, cn } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { useSave } from "../../lib/query/query";
 import { clearSpaceSelection, rpc, selectSpace } from "../../lib/query/rpc";
 import { errorText } from "../../lib/query/user-error";
-import { instanceName } from "../../lib/platform/instance-identity";
 import { AuthFrame, submitClass } from "./Auth";
 
 const appName = instanceName();
@@ -92,7 +92,7 @@ export function JoinOrganizationPage() {
           else navigate("/app", { replace: true });
         }}
       >
-        <Button type="submit" className={submitClass}>
+        <Button type="submit" size="xl" className={submitClass}>
           {state.kind === "error" ? <Trans>Retry</Trans> : <Trans>Open {appName}</Trans>}
         </Button>
       </AuthFrame>
@@ -116,7 +116,7 @@ export function JoinOrganizationPage() {
           {joinError}
         </p>
       ) : null}
-      <Button type="submit" disabled={join.pending} className={cn(submitClass, "mt-6")}>
+      <Button type="submit" size="xl" disabled={join.pending} className={cn(submitClass, "mt-6")}>
         <Trans>Join</Trans>
       </Button>
     </AuthFrame>

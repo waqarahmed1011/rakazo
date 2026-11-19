@@ -5,9 +5,9 @@ import { Button, cn } from "@rakazo/ui-web";
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { SharedSpaceRules } from "../../components/spaces/SharedSpaceRules";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { rpc, selectSpace } from "../../lib/query/rpc";
 import { errorText } from "../../lib/query/user-error";
-import { instanceName } from "../../lib/platform/instance-identity";
 import { AuthFrame, submitClass } from "./Auth";
 
 const appName = instanceName();
@@ -103,7 +103,7 @@ export function InvitePage() {
           else navigate("/app", { replace: true });
         }}
       >
-        <Button type="submit" className={submitClass}>
+        <Button type="submit" size="xl" className={submitClass}>
           {state.kind === "invalid" ? <Trans>Open {appName}</Trans> : <Trans>Retry</Trans>}
         </Button>
       </AuthFrame>
@@ -122,7 +122,7 @@ export function InvitePage() {
           {joinError}
         </p>
       ) : null}
-      <Button type="submit" disabled={joining} className={cn(submitClass, "mt-6")}>
+      <Button type="submit" size="xl" disabled={joining} className={cn(submitClass, "mt-6")}>
         <Trans>Join</Trans>
       </Button>
     </AuthFrame>

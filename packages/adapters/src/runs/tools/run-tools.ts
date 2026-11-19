@@ -5,6 +5,11 @@ import {
   isTerminatingReplyResult,
 } from "../../approvals/approval-effect.js";
 import { argumentGiven } from "../../bots/update-bot-patch.js";
+import { listChatTranscripts, readChatMeeting } from "../../meetings/meeting-chat.js";
+import {
+  meetingTranscriptArgs,
+  READ_MEETING_TRANSCRIPT,
+} from "../../meetings/meeting-chat.tool-definition.js";
 import { IMAGE_RETURNING_COMPUTER_TOOLS } from "../../models/model-vision.js";
 import { MODEL_CANNOT_SEE_MESSAGE } from "../../models/model-vision.prompt.js";
 import { strategicInitiativeToolAllowed } from "../../routines/strategic-initiative.js";
@@ -39,6 +44,7 @@ import {
   USER_COMPUTER_OBSERVE_TOOL,
   USER_COMPUTER_SHELL_TOOL,
   userComputerAct,
+  userComputerList,
   userComputerObserve,
   userComputerShell,
 } from "./run-tools-user-computer.js";
@@ -48,11 +54,26 @@ const TOOL_HANDLERS = new Map<string, ToolHandler>([
   ...Object.entries(fileTools),
   ...Object.entries(pageTools),
   ...Object.entries(memoryTools),
+  [
+    READ_MEETING_TRANSCRIPT,
+    async (ctx, call) => {
+      const input = meetingTranscriptArgs.safeParse(call.args);
+      if (!input.success || !ctx.source.meetingChat || (await ctx.trust.receivedOutsideMessage())) {
+        return call.finish({ error: "A meeting in this bot’s chat is required." });
+      }
+      const { meeting_id, offset, before } = input.data;
+      if (!meeting_id)
+        return call.finish(await listChatTranscripts(ctx.deps.prisma, ctx.run, before));
+      const transcript = await readChatMeeting(ctx.deps.prisma, ctx.run, meeting_id, offset);
+      return call.finish(transcript ?? { error: "The meeting transcript is unavailable." });
+    },
+  ],
   ...Object.entries(integrationTools),
   ...Object.entries(taskTools),
   ...Object.entries(messagingTools),
   ...Object.entries(secretTools),
   ...Object.entries(fleetTools),
+  ["user_computer_list", userComputerList],
   [USER_COMPUTER_SHELL_TOOL, userComputerShell],
   [USER_COMPUTER_OBSERVE_TOOL, userComputerObserve],
   [USER_COMPUTER_ACT_TOOL, userComputerAct],
@@ -199,7 +220,7 @@ async function dispatchTool(
     return refuse(
       refusal(
         "daily_check_in_tool_not_allowed",
-        "Daily check-ins can only ask or message the user.",
+        "Daily check-ins can only ask the user. Put any reminder in your final reply.",
       ),
     );
   }
@@ -258,20 +279,22 @@ async function dispatchTool(
   if ("result" in gate) {
     const ownProfile = name === "update_bot" && !argumentGiven(args.bot_id);
     if (gate.replayed && toolResultTaintsRun(request.name) && !ownProfile) {
-      await markReadOutsideContent(ctx);
+      await markReadOutsideContent(ctx, gate.result);
     }
     return refuse(gate.result, request.name);
   }
   // Only a call that ran can have taken in outside content; one refused above, or whose approval
   // was denied, never did. A call that failed partway still counts.
   const runHandler = async () => {
+    let result: unknown;
     try {
-      return await toolHandler(gate.call.name)(ctx, gate.call);
+      result = await toolHandler(gate.call.name)(ctx, gate.call);
+      return result;
     } finally {
       // Editing its own profile returns only what this run wrote; a child's profile is another
       // bot's.
       const ownProfile = name === "update_bot" && !argumentGiven(args.bot_id);
-      if (toolResultTaintsRun(name) && !ownProfile) await markReadOutsideContent(ctx);
+      if (toolResultTaintsRun(name) && !ownProfile) await markReadOutsideContent(ctx, result);
     }
   };
   if (!gate.call.applied) return runHandler();
