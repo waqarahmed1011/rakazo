@@ -45,7 +45,7 @@ import {
   ToggleGroupItem,
 } from "@rakazo/ui-web";
 import { cn } from "@rakazo/ui-web/lib/utils";
-import { Check } from "lucide-react";
+import { Check, RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { useSignOut } from "../../lib/auth/sign-out";
 import {
@@ -61,7 +61,6 @@ import { rpc } from "../../lib/query/rpc";
 import { AccountMenu } from "../account/AccountMenu";
 import { ConfirmDialog } from "../ConfirmDialog";
 import { InfoTooltip } from "../InfoTooltip";
-import { ComputerSizeSetting } from "./ComputerSizeSetting";
 import { ComputerUsage } from "./ComputerUsage";
 
 const appName = instanceName();
@@ -772,13 +771,13 @@ export function ModelCreditsSettings({
             <Trans>Available credits</Trans>
           </h3>
           <Button
-            size="sm"
+            size="icon-sm"
             variant="ghost"
             aria-label={t`Refresh credits`}
             disabled={pending}
             onClick={() => void action(refresh)}
           >
-            <Trans>Refresh</Trans>
+            <RefreshCw />
           </Button>
         </div>
         <p className="mt-2 text-display font-medium tabular-nums">{balance}</p>
@@ -852,13 +851,8 @@ export function ModelCreditsSettings({
               </Trans>
             </p>
           ) : null}
-          {status.canManage &&
-          status.computerSizeSettings &&
-          status.computerSizeSettings.available.length > 1 ? (
-            <ComputerSizeSetting settings={status.computerSizeSettings} />
-          ) : null}
           {status.canManage ? (
-            <ComputerUsage standardHours={Boolean(status.computerSizeSettings)} />
+            <ComputerUsage standardHours={status.standardComputerHours === true} />
           ) : null}
           {status.canManage && status.state === "trialing" && !status.cancelAtPeriodEnd ? (
             <>
