@@ -1,7 +1,7 @@
 import { useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@rakazo/ui-web";
-import { Bell, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react";
+import { Bell, LayoutDashboard, PanelLeftClose, PanelLeftOpen, Plus, Search } from "lucide-react";
 import { IconTooltip } from "../../../components/IconTooltip";
 import { WindowChrome } from "../../../components/WindowChrome";
 import { desktopBridge } from "../../../lib/platform/desktop";
@@ -20,6 +20,7 @@ export function SidebarHeader({
   toggleActivityMode,
   searchOpen = false,
   onSearch,
+  onOverview,
   setBotsSidebarCollapsedPref,
   bots,
   setMobileSidebarOpen,
@@ -35,6 +36,7 @@ export function SidebarHeader({
   toggleActivityMode: () => void;
   searchOpen?: boolean;
   onSearch?: () => void;
+  onOverview?: () => void;
   setBotsSidebarCollapsedPref: (collapsed: boolean) => void;
   bots: Bot[];
   setMobileSidebarOpen: (open: boolean) => void;
@@ -93,6 +95,19 @@ export function SidebarHeader({
             </Button>
           </IconTooltip>
         ) : null}
+        {mini || !onOverview ? null : (
+          <IconTooltip label={t`Overview`} side={labelSide}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t`Overview`}
+              onClick={onOverview}
+              className="app-no-drag text-muted-foreground"
+            >
+              <LayoutDashboard className={ICON} strokeWidth={STROKE} aria-hidden="true" />
+            </Button>
+          </IconTooltip>
+        )}
         {mini ? null : (
           <IconTooltip label={t`Activity`} side={labelSide}>
             <Button

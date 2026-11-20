@@ -1103,6 +1103,7 @@ function SpaceShell() {
         openSettings={openSettings}
         openIntegrations={() => setOverlay({ kind: "integrations" })}
         openSkills={() => setOverlay({ kind: "skills" })}
+        openOverview={() => setOverlay({ kind: "overview" })}
         openSpaceChat={openSpaceChat}
       />
 
@@ -1455,6 +1456,7 @@ function SpaceShell() {
           paletteActions={paletteActions}
         />
         <AppOverlays
+          boardEnabled={hasLab(bootstrapMe?.labs, "board")}
           overlay={overlay}
           setOverlay={setOverlay}
           activeBotId={activeBotId.current}

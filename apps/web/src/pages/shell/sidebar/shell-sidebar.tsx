@@ -85,6 +85,7 @@ export function ShellSidebar({
   openSettings,
   openIntegrations,
   openSkills,
+  openOverview,
   openSpaceChat,
 }: {
   isMobile: boolean;
@@ -115,6 +116,7 @@ export function ShellSidebar({
   openSettings: (section: SettingsSection) => void;
   openIntegrations: () => void;
   openSkills: () => void;
+  openOverview: () => void;
   openSpaceChat: (spaceId: string, path: string) => void;
 }) {
   const { t } = useLingui();
@@ -168,6 +170,7 @@ export function ShellSidebar({
       >
         <SidebarHeader
           mini={mini}
+          onOverview={openOverview}
           createMenuOpen={createMenuOpen}
           setCreateMenuOpen={setCreateMenuOpen}
           activityMode={activityMode}

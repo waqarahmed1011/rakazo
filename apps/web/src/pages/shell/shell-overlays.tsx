@@ -34,6 +34,9 @@ const PluginsOverlay = lazyOverlay(() =>
 const SkillsDialog = lazyOverlay(() =>
   import("../../components/integrations/skills-dialog").then((module) => module.SkillsDialog),
 );
+const OverviewDialog = lazyOverlay(() =>
+  import("../overview/OverviewDialog").then((module) => module.OverviewDialog),
+);
 const BotTemplatesDialog = lazyOverlay(() =>
   import("../../components/bot-templates/bot-templates-dialog").then(
     (module) => module.BotTemplatesDialog,
@@ -66,7 +69,9 @@ export function AppOverlays({
   messagingEnabled,
   onConnectedAppsChange,
   onOpenBot,
+  boardEnabled,
 }: {
+  boardEnabled: boolean;
   overlay: ShellOverlay;
   setOverlay: (next: ShellOverlay) => void;
   activeBotId: string | undefined;
@@ -92,6 +97,9 @@ export function AppOverlays({
               : undefined
           }
         />
+      ) : null}
+      {overlay?.kind === "overview" ? (
+        <OverviewDialog boardEnabled={boardEnabled} onClose={() => setOverlay(null)} />
       ) : null}
       {overlay?.kind === "skills" ? (
         <SkillsDialog onClose={() => setOverlay(null)} onOpenTemplates={openTemplates} />
