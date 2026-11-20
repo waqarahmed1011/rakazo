@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { groupBotsForSidebar, reorderBotTo } from "./bot-sections.js";
+import { chatKey, groupBotsForSidebar, reorderBotTo, sortChats } from "./bot-sections.js";
 
 const sections = [
   { id: "work", name: "Work" },
@@ -75,5 +75,17 @@ describe("reorderBotTo", () => {
   it("leaves the list alone when either bot is missing or unchanged", () => {
     expect(reorderBotTo(bots, "a", "missing")).toBe(bots);
     expect(reorderBotTo(bots, "a", "a")).toBe(bots);
+  });
+});
+
+describe("sortChats", () => {
+  it("orders bots and group chats by one position, a group first on a tie", () => {
+    const sorted = sortChats([
+      { kind: "bot" as const, id: "a", position: 0 },
+      { kind: "bot" as const, id: "b", position: 1 },
+      { kind: "group" as const, id: "g1" },
+      { kind: "group" as const, id: "g2", position: 2 },
+    ]);
+    expect(sorted.map(chatKey)).toEqual(["group:g1", "bot:a", "bot:b", "group:g2"]);
   });
 });

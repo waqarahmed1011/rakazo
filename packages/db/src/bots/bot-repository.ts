@@ -85,6 +85,7 @@ function mapBot(
     notifyOnFinish: boolean;
     pinned: boolean;
     sectionId: string | null;
+    position?: number;
     archivedAt: Date | null;
     parentBotId: string | null;
     memoryScope: string | null;
@@ -128,6 +129,7 @@ function mapBot(
     avatarSet: resolveBotAvatarSet(bot.avatarSet),
     notifyOnFinish: bot.notifyOnFinish,
     pinned: bot.pinned,
+    ...(bot.position === undefined ? {} : { position: bot.position }),
     sectionId: bot.sectionId,
     archivedAt: bot.archivedAt?.toISOString() ?? null,
     unread: unreadFor(bot.thread),
@@ -198,6 +200,7 @@ export function createRepos(
         notifyOnFinish: true,
         pinned: true,
         sectionId: true,
+        position: true,
         updatedAt: true,
         parentBotId: true,
         thread: { select: { id: true, reads: readStateFor(userId) } },
@@ -219,6 +222,7 @@ export function createRepos(
         notifyOnFinish: bot.notifyOnFinish,
         pinned: bot.pinned,
         sectionId: bot.sectionId,
+        position: bot.position,
         unread: unreadFor(bot.thread),
         snoozedUntil: snoozedUntilFor(bot.thread),
         parentBotId: bot.parentBotId,
@@ -661,6 +665,41 @@ export function createRepos(
         // ponytail: rosters are small; switch to one SQL CASE update only if this becomes hot.
         await Promise.all(
           botIds.map((id, position) => tx.bot.update({ where: { id }, data: { position } })),
+        );
+      });
+    },
+
+    async reorderChats(
+      actor: Actor,
+      chats: Array<{ kind: "bot" | "group"; id: string }>,
+    ): Promise<void> {
+      await prisma.$transaction(async (tx) => {
+        const [bots, groups] = await Promise.all([
+          tx.bot.findMany({
+            where: { spaceId: actor.spaceId, archivedAt: null },
+            select: { id: true },
+          }),
+          tx.chatGroup.findMany({
+            where: { spaceId: actor.spaceId, archivedAt: null },
+            select: { id: true },
+          }),
+        ]);
+        const existing = new Set([
+          ...bots.map((bot) => `bot:${bot.id}`),
+          ...groups.map((group) => `group:${group.id}`),
+        ]);
+        if (
+          existing.size !== chats.length ||
+          chats.some((chat) => !existing.has(`${chat.kind}:${chat.id}`))
+        ) {
+          throw new IsolationError();
+        }
+        await Promise.all(
+          chats.map((chat, position) =>
+            chat.kind === "bot"
+              ? tx.bot.update({ where: { id: chat.id }, data: { position } })
+              : tx.chatGroup.update({ where: { id: chat.id }, data: { position } }),
+          ),
         );
       });
     },

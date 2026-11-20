@@ -421,6 +421,10 @@ export function botsRoutes(ctx: RouterContext) {
         await repos.reorderBots(context.actor, input.botIds);
         return { ok: true as const };
       }),
+      reorderChats: authed.bots.reorderChats.handler(async ({ context, input }) => {
+        await repos.reorderChats(context.actor, input.chats);
+        return { ok: true as const };
+      }),
       update: authed.bots.update.handler(async ({ context, input }) => {
         const existing = await repos.getBot(context.actor, input.botId);
         if (input.sectionId) {

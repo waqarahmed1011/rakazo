@@ -1,4 +1,4 @@
-import { chatSnoozed, chatWoke, groupBotsForSidebar } from "@rakazo/core";
+import { chatSnoozed, chatWoke, groupBotsForSidebar, sortChats } from "@rakazo/core";
 
 type SidebarChat = {
   id: string;
@@ -7,6 +7,7 @@ type SidebarChat = {
   pinned: boolean;
   sectionId: string | null;
   snoozedUntil?: string | null;
+  position?: number;
 };
 
 type SidebarSpace<TBot extends SidebarChat, TGroup extends SidebarChat> = {
@@ -57,10 +58,14 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     const visibleBots = space.bots.filter(listed);
     const visibleGroups = space.groups.filter(listed);
     const grouped = groupBotsForSidebar(
-      [
-        ...visibleBots.map((chat) => ({ kind: "bot" as const, chat })),
-        ...visibleGroups.map((chat) => ({ kind: "group" as const, chat })),
-      ].map((item) => ({
+      sortChats([
+        ...visibleBots.map((chat) => ({ kind: "bot" as const, chat, position: chat.position })),
+        ...visibleGroups.map((chat) => ({
+          kind: "group" as const,
+          chat,
+          position: chat.position,
+        })),
+      ]).map((item) => ({
         ...item,
         id: item.chat.id,
         pinned: item.chat.pinned,

@@ -3,14 +3,22 @@ import { describe, expect, it } from "vitest";
 import { resolveRosterDrop } from "./roster-drop";
 
 const bot = (id: string, sectionId: string | null, pinned = false) => ({
+  kind: "bot" as const,
   id,
   sectionId,
   pinned,
 });
-const group = (id: string, sectionId: string | null, memberIds: string[]) => ({
+const group = (id: string, sectionId: string | null, memberIds: string[], pinned = false) => ({
   id,
   sectionId,
+  pinned,
   memberIds,
+});
+const draggedGroup = (id: string, sectionId: string | null, pinned = false) => ({
+  kind: "group" as const,
+  id,
+  sectionId,
+  pinned,
 });
 
 describe("resolveRosterDrop", () => {
@@ -21,7 +29,7 @@ describe("resolveRosterDrop", () => {
         target: { kind: "bot", chat: bot("b", "s1") },
         sameList: true,
       }),
-    ).toEqual({ action: "reorder", targetBotId: "b" });
+    ).toEqual({ action: "reorder", targetKey: "bot:b" });
   });
 
   it("refuses a reorder across tree levels inside one section", () => {
@@ -134,6 +142,50 @@ describe("resolveRosterDrop", () => {
       resolveRosterDrop({
         dragged: bot("a", "s1"),
         target: { kind: "bot", chat: bot("a", "s1") },
+        sameList: true,
+      }),
+    ).toBeNull();
+  });
+
+  it("reorders a group chat among the chats of its list", () => {
+    expect(
+      resolveRosterDrop({
+        dragged: draggedGroup("g1", "s1"),
+        target: { kind: "bot", chat: bot("b", "s1") },
+        sameList: true,
+      }),
+    ).toEqual({ action: "reorder", targetKey: "bot:b" });
+    expect(
+      resolveRosterDrop({
+        dragged: draggedGroup("g1", "s1"),
+        target: { kind: "group", chat: group("g2", "s1", ["a", "b"]) },
+        sameList: true,
+      }),
+    ).toEqual({ action: "reorder", targetKey: "group:g2" });
+  });
+
+  it("moves a group chat to another section instead of joining groups", () => {
+    expect(
+      resolveRosterDrop({
+        dragged: draggedGroup("g1", null),
+        target: { kind: "group", chat: group("g2", "s2", ["a", "b"]) },
+        sameList: false,
+      }),
+    ).toEqual({ action: "move", sectionId: "s2" });
+    expect(
+      resolveRosterDrop({
+        dragged: draggedGroup("g1", null),
+        target: { kind: "section", sectionId: "s2" },
+        sameList: false,
+      }),
+    ).toEqual({ action: "move", sectionId: "s2" });
+  });
+
+  it("never drops a group chat on itself", () => {
+    expect(
+      resolveRosterDrop({
+        dragged: draggedGroup("g1", null),
+        target: { kind: "group", chat: group("g1", null, ["a", "b"]) },
         sameList: true,
       }),
     ).toBeNull();

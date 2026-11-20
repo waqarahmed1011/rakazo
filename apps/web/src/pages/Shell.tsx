@@ -804,7 +804,8 @@ function SpaceShell() {
   const rosterDrop = useRosterDrop({
     rpc,
     bots,
-    reorderRosterBot: roster.reorderRosterBot,
+    groups: roster.groups,
+    reorderRosterChat: roster.reorderRosterChat,
     refreshBots,
     refreshGroupThread: (id) => refreshGroupThreadRef.current(id),
     activeGroupId,
@@ -1061,10 +1062,10 @@ function SpaceShell() {
             botsSidebarDensity={botsSidebarDensity}
             dismissedRunErrorIds={composer.dismissedRunErrorIds}
             displayedRunError={composer.displayedRunError}
-            draggedBotId={rosterDrop.draggedBotId}
-            setDraggedBotId={rosterDrop.setDraggedBotId}
+            draggedChatKey={rosterDrop.draggedChatKey}
+            setDraggedChatKey={rosterDrop.setDraggedChatKey}
             chatMenu={chatMenu}
-            reorderRosterBot={roster.reorderRosterBot}
+            reorderRosterChat={roster.reorderRosterChat}
             activeSnapshot={activeSnapshot}
           />
         }

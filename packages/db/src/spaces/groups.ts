@@ -28,6 +28,7 @@ type GroupRecord = {
   name: string;
   pinned: boolean;
   sectionId: string | null;
+  position: number;
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -81,6 +82,7 @@ function mapGroup(group: GroupRecord): Group {
     name: group.name,
     pinned: group.pinned,
     sectionId: group.sectionId,
+    position: group.position,
     archivedAt: group.archivedAt?.toISOString() ?? null,
     members: mapGroupMembers(group.members),
     threadId: group.thread.id,

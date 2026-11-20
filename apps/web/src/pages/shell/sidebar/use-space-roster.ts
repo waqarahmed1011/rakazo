@@ -9,10 +9,10 @@ import type {
   Space,
   ThreadSnapshot,
 } from "@rakazo/contracts";
-import { reorderBotTo } from "@rakazo/core";
+import { chatKey, sortChats } from "@rakazo/core";
 import { replaceEqualDeep } from "@tanstack/react-query";
 import type { RefObject } from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { applyAccountCapabilities, takeInitialBootstrap } from "../../../lib/bootstrap";
 import {
@@ -29,7 +29,7 @@ import { useEventListener } from "../../../lib/use-event-listener";
 import type { ThreadState } from "../chat/use-thread-state";
 import type { useShellNavigation } from "../use-shell-navigation";
 import { firstThreadRoute } from "../use-shell-navigation";
-import type { RosterDropTarget } from "./roster-drop";
+import type { DraggedChat, RosterDropTarget } from "./roster-drop";
 import { resolveRosterDrop } from "./roster-drop";
 import { createRosterSignals } from "./roster-signals";
 
@@ -61,7 +61,7 @@ export function useSpaceRoster({
   const botsRef = useRef(bots);
   botsRef.current = bots;
   const botOrderEpochRef = useRef(0);
-  const pendingBotOrderRef = useRef<string[] | null>(null);
+  const pendingBotOrderRef = useRef<Array<{ kind: "bot" | "group"; id: string }> | null>(null);
   const savingBotOrderRef = useRef(false);
   const [botSections, setBotSections] = useState<BotSection[]>(seed?.botSections ?? []);
   const [spaces, setSpaces] = useState<Space[]>(seed?.spaces ?? []);
@@ -160,7 +160,17 @@ export function useSpaceRoster({
         setBots((previous) => replaceEqualDeep(previous, list));
       }
       setBotSections((previous) => replaceEqualDeep(previous, sections));
-      setGroups((previous) => replaceEqualDeep(previous, groupList));
+      setGroups((previous) =>
+        replaceEqualDeep(
+          previous,
+          preserveBotOrder || savingBotOrderRef.current
+            ? groupList.map((group) => ({
+                ...group,
+                position: previous.find((item) => item.id === group.id)?.position ?? group.position,
+              }))
+            : groupList,
+        ),
+      );
       setSpaces((previous) => replaceEqualDeep(previous, navigation.spaces));
       setFirstBotDue(navigation.firstBotDue !== false);
       setInitialBotsLoaded(true);
@@ -215,10 +225,10 @@ export function useSpaceRoster({
     savingBotOrderRef.current = true;
     try {
       while (pendingBotOrderRef.current) {
-        const botIds = pendingBotOrderRef.current;
+        const chats = pendingBotOrderRef.current;
         pendingBotOrderRef.current = null;
         try {
-          await rpc.bots.reorder({ botIds });
+          await rpc.bots.reorderChats({ chats });
         } catch {
           // Keep a newer order queued during this failed save; only roll back
           // when nothing else is pending.
@@ -235,17 +245,41 @@ export function useSpaceRoster({
       }
     }
   }, [refreshBots]);
-  const reorderRosterBot = useCallback(
-    (sourceId: string, targetId: string, groupBotIds: string[]) => {
-      if (!groupBotIds.includes(sourceId) || !groupBotIds.includes(targetId)) return;
-      const current = botsRef.current;
-      const reordered = reorderBotTo(current, sourceId, targetId);
-      if (reordered === current) return;
-      const next = [...reordered];
+  /** Moves one chat (a bot or a group chat, by `chatKey`) onto another within the same list. */
+  const reorderRosterChat = useCallback(
+    (sourceKey: string, targetKey: string, listKeys: string[]) => {
+      if (!listKeys.includes(sourceKey) || !listKeys.includes(targetKey)) return;
+      const order = sortChats([
+        ...botsRef.current.map((bot) => ({
+          kind: "bot" as const,
+          id: bot.id,
+          position: bot.position,
+        })),
+        ...groupsRef.current
+          .filter((group) => !group.archivedAt)
+          .map((group) => ({ kind: "group" as const, id: group.id, position: group.position })),
+      ]);
+      const keys = order.map(chatKey);
+      const from = keys.indexOf(sourceKey);
+      const to = keys.indexOf(targetKey);
+      if (from < 0 || to < 0 || from === to) return;
+      const [moved] = order.splice(from, 1);
+      if (!moved) return;
+      order.splice(to, 0, moved);
+      const positions = new Map(order.map((chat, position) => [chatKey(chat), position]));
+      const next = botsRef.current
+        .map((bot) => ({ ...bot, position: positions.get(`bot:${bot.id}`) ?? bot.position }))
+        .sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       botOrderEpochRef.current += 1;
       botsRef.current = next;
       setBots(next);
-      pendingBotOrderRef.current = next.map((bot) => bot.id);
+      setGroups((current) =>
+        current.map((group) => ({
+          ...group,
+          position: positions.get(`group:${group.id}`) ?? group.position,
+        })),
+      );
+      pendingBotOrderRef.current = order.map(({ kind, id }) => ({ kind, id }));
       void flushBotOrder();
     },
     [flushBotOrder],
@@ -289,7 +323,7 @@ export function useSpaceRoster({
     liveRoute,
     beginSpaceSwitch,
     refreshBots,
-    reorderRosterBot,
+    reorderRosterChat,
     addCreatedBot,
   };
 }
@@ -502,11 +536,12 @@ export function useSpaceBootstrap({
   return rosterSignals;
 }
 
-/** Dragging a bot in the roster: reorder it, move it to a section, or add it to a group. */
+/** Dragging a bot or group chat in the roster: reorder it, move it to a section, or add a bot to a group. */
 export function useRosterDrop({
   rpc,
   bots,
-  reorderRosterBot,
+  groups,
+  reorderRosterChat,
   refreshBots,
   refreshGroupThread,
   activeGroupId,
@@ -514,40 +549,51 @@ export function useRosterDrop({
 }: {
   rpc: ReturnType<typeof createSpaceRpc>;
   bots: Bot[];
-  reorderRosterBot: SpaceRoster["reorderRosterBot"];
+  groups: Group[];
+  reorderRosterChat: SpaceRoster["reorderRosterChat"];
   refreshBots: () => Promise<void>;
   refreshGroupThread: (groupId: string) => Promise<ThreadSnapshot>;
   activeGroupId: RefObject<string | undefined>;
   setSendError: (error: string | null) => void;
 }) {
   const { t } = useLingui();
-  const [draggedBotId, setDraggedBotId] = useState<string | null>(null);
+  const [draggedChatKey, setDraggedChatKey] = useState<string | null>(null);
   const [rosterDropKey, setRosterDropKey] = useState<string | null>(null);
-  // Drags only act on bots of the active space; other spaces are read-only here.
-  const draggedBot = draggedBotId ? bots.find((bot) => bot.id === draggedBotId) : undefined;
+  // Drags only act on chats of the active space; other spaces are read-only here.
+  const draggedChat = useMemo<DraggedChat | undefined>(() => {
+    if (!draggedChatKey) return undefined;
+    const bot = bots.find((item) => chatKey({ kind: "bot", id: item.id }) === draggedChatKey);
+    if (bot) return { kind: "bot", id: bot.id, sectionId: bot.sectionId, pinned: bot.pinned };
+    const group = groups.find((item) => chatKey({ kind: "group", id: item.id }) === draggedChatKey);
+    return group
+      ? { kind: "group", id: group.id, sectionId: group.sectionId, pinned: group.pinned }
+      : undefined;
+  }, [bots, draggedChatKey, groups]);
   const rosterDropAction = useCallback(
     (target: RosterDropTarget, sameList: boolean) =>
-      draggedBot ? resolveRosterDrop({ dragged: draggedBot, target, sameList }) : null,
-    [draggedBot],
+      draggedChat ? resolveRosterDrop({ dragged: draggedChat, target, sameList }) : null,
+    [draggedChat],
   );
   const applyRosterDrop = useCallback(
-    (target: RosterDropTarget, sameList: boolean, groupBotIds: string[]) => {
+    (target: RosterDropTarget, sameList: boolean, listKeys: string[]) => {
       const action = rosterDropAction(target, sameList);
-      setDraggedBotId(null);
+      setDraggedChatKey(null);
       setRosterDropKey(null);
-      if (!action || !draggedBot) return;
+      if (!action || !draggedChat) return;
       setSendError(null);
       if (action.action === "reorder") {
-        reorderRosterBot(draggedBot.id, action.targetBotId, groupBotIds);
+        reorderRosterChat(chatKey(draggedChat), action.targetKey, listKeys);
         return;
       }
       const request =
         action.action === "move"
-          ? rpc.bots.update({ botId: draggedBot.id, sectionId: action.sectionId })
+          ? draggedChat.kind === "bot"
+            ? rpc.bots.update({ botId: draggedChat.id, sectionId: action.sectionId })
+            : rpc.groups.update({ groupId: draggedChat.id, sectionId: action.sectionId })
           : rpc.groups.update({
               groupId: action.groupId,
               botIds: action.botIds,
-              expectedBotIds: action.botIds.filter((id) => id !== draggedBot.id),
+              expectedBotIds: action.botIds.filter((id) => id !== draggedChat.id),
             });
       void request
         .then(async () => {
@@ -561,11 +607,11 @@ export function useRosterDrop({
           void refreshBots().catch(() => undefined);
         });
     },
-    [draggedBot, refreshBots, reorderRosterBot, rosterDropAction, t],
+    [draggedChat, refreshBots, reorderRosterChat, rosterDropAction, t],
   );
   return {
-    draggedBotId,
-    setDraggedBotId,
+    draggedChatKey,
+    setDraggedChatKey,
     rosterDropKey,
     setRosterDropKey,
     rosterDropAction,

@@ -29,6 +29,8 @@ export const GroupSchema = z.object({
   name: z.string(),
   pinned: z.boolean(),
   sectionId: Id.nullable(),
+  /** Sidebar order, in the same sequence as bots' positions. */
+  position: z.number().int().nonnegative().optional(),
   archivedAt: z.string().nullable(),
   members: z.array(GroupMemberSchema),
   threadId: Id,

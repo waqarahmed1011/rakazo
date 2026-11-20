@@ -2,6 +2,7 @@ import { i18n } from "@lingui/core";
 import { t } from "@lingui/core/macro";
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, BotSection, Group, Me, Space, ThreadSnapshot } from "@rakazo/contracts";
+import { chatKey } from "@rakazo/core";
 import {
   BotAvatar,
   Button,
@@ -62,10 +63,10 @@ export function SidebarRoster({
   botsSidebarDensity,
   dismissedRunErrorIds,
   displayedRunError,
-  draggedBotId,
-  setDraggedBotId,
+  draggedChatKey,
+  setDraggedChatKey,
   chatMenu,
-  reorderRosterBot,
+  reorderRosterChat,
   activeSnapshot,
   mini = false,
 }: {
@@ -92,10 +93,10 @@ export function SidebarRoster({
   botsSidebarDensity: BotsSidebarDensity;
   dismissedRunErrorIds: ReadonlySet<string>;
   displayedRunError: string | null;
-  draggedBotId: string | null;
-  setDraggedBotId: (id: string | null) => void;
+  draggedChatKey: string | null;
+  setDraggedChatKey: (key: string | null) => void;
   chatMenu: ChatMenuState;
-  reorderRosterBot: (sourceId: string, targetId: string, groupBotIds: string[]) => void;
+  reorderRosterChat: (sourceKey: string, targetKey: string, listKeys: string[]) => void;
   activeSnapshot: ThreadSnapshot | null;
   mini?: boolean;
 }) {
@@ -105,9 +106,7 @@ export function SidebarRoster({
     <>
       {sidebarGroups.map((group, groupIndex) => {
         const collapsed = Boolean(group.title) && collapsedSidebarSections.has(group.key);
-        const groupBotIds = group.bots.flatMap((item) =>
-          item.kind === "bot" ? [item.chat.id] : [],
-        );
+        const listKeys = group.bots.map((item) => chatKey({ kind: item.kind, id: item.chat.id }));
         const hasSpaceActions = group.canOpenSpaceSettings;
         const headerDropTarget: RosterDropTarget | null =
           group.spaceId === bootstrapMe?.spaceId &&
@@ -154,7 +153,7 @@ export function SidebarRoster({
                 onDrop={(event) => {
                   if (!headerDropTarget) return;
                   event.preventDefault();
-                  applyRosterDrop(headerDropTarget, false, groupBotIds);
+                  applyRosterDrop(headerDropTarget, false, listKeys);
                 }}
               >
                 {group.title ? (
@@ -310,11 +309,14 @@ export function SidebarRoster({
                           kind: "group",
                           chat: {
                             id: item.chat.id,
+                            sectionId: item.chat.sectionId,
+                            pinned: item.chat.pinned,
                             memberIds: item.chat.members.map((member) => member.botId),
                           },
                         };
                 const rowSameList =
-                  Boolean(draggedBotId) && groupBotIds.includes(draggedBotId ?? "");
+                  Boolean(draggedChatKey) && listKeys.includes(draggedChatKey ?? "");
+                const itemKey = chatKey({ kind: item.kind, id: item.chat.id });
                 const rowDropKey = `row:${item.kind}:${item.chat.id}`;
                 const groupMembers =
                   item.kind === "group" && item.chat.id === activeSnapshot?.groupId
@@ -337,7 +339,7 @@ export function SidebarRoster({
                 const chatTrigger = (
                   <ContextMenuTrigger
                     render={<button type="button" />}
-                    draggable={item.kind === "bot"}
+                    draggable={item.chat.spaceId === bootstrapMe?.spaceId}
                     data-roster-bot-id={item.kind === "bot" ? item.chat.id : undefined}
                     data-roster-unread={item.chat.unread ? "true" : undefined}
                     data-roster-error={rowError && (compact || mini) ? "true" : undefined}
@@ -355,12 +357,9 @@ export function SidebarRoster({
                             .join(" ") || undefined
                         : undefined
                     }
-                    aria-keyshortcuts={
-                      item.kind === "bot" ? "Alt+ArrowUp Alt+ArrowDown" : undefined
-                    }
+                    aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown"
                     onDragStart={(event) => {
-                      if (item.kind !== "bot") return;
-                      setDraggedBotId(item.chat.id);
+                      setDraggedChatKey(itemKey);
                       event.dataTransfer.effectAllowed = "move";
                       event.dataTransfer.setData("text/plain", item.chat.id);
                     }}
@@ -376,26 +375,22 @@ export function SidebarRoster({
                     onDrop={(event) => {
                       if (!rowDropTarget) return;
                       event.preventDefault();
-                      applyRosterDrop(rowDropTarget, rowSameList, groupBotIds);
+                      applyRosterDrop(rowDropTarget, rowSameList, listKeys);
                     }}
                     onDragEnd={() => {
-                      setDraggedBotId(null);
+                      setDraggedChatKey(null);
                       setRosterDropKey(null);
                     }}
                     data-roster-drop={rosterDropKey === rowDropKey ? "true" : undefined}
                     onKeyDown={(event) => {
-                      if (
-                        item.kind !== "bot" ||
-                        !event.altKey ||
-                        (event.key !== "ArrowUp" && event.key !== "ArrowDown")
-                      )
+                      if (!event.altKey || (event.key !== "ArrowUp" && event.key !== "ArrowDown"))
                         return;
-                      const siblings = groupBotIds;
-                      const index = siblings.indexOf(item.chat.id);
+                      const siblings = listKeys;
+                      const index = siblings.indexOf(itemKey);
                       const target = siblings[index + (event.key === "ArrowUp" ? -1 : 1)];
                       if (!target) return;
                       event.preventDefault();
-                      reorderRosterBot(item.chat.id, target, groupBotIds);
+                      reorderRosterChat(itemKey, target, listKeys);
                     }}
                     onClick={() => {
                       openSpaceChat(
@@ -544,7 +539,10 @@ export function SidebarRoster({
                     key={`${item.kind}:${item.chat.id}`}
                     className="group/row relative"
                     style={{
-                      opacity: item.kind === "bot" && draggedBotId === item.chat.id ? 0.55 : 1,
+                      opacity:
+                        draggedChatKey === chatKey({ kind: item.kind, id: item.chat.id })
+                          ? 0.55
+                          : 1,
                     }}
                   >
                     <ChatMenu

@@ -1141,6 +1141,8 @@ model ChatGroup {
   pinned     Boolean           @default(false)
   sectionId  String?
   section    BotSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  /// Sidebar order, shared with bots' positions so the two sort together.
+  position   Int               @default(0)
   archivedAt DateTime?
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt

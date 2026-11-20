@@ -42,6 +42,8 @@ export const BotSchema = z.object({
   avatarSet: BotAvatarSetSchema.optional(),
   notifyOnFinish: z.boolean(),
   pinned: z.boolean(),
+  /** Sidebar order, in the same sequence as group chats' positions. */
+  position: z.number().int().nonnegative().optional(),
   sectionId: Id.nullable(),
   archivedAt: z.string().nullable(),
   unread: z.boolean(),
@@ -104,6 +106,20 @@ export const ReorderBotsInput = z.object({
     .refine((ids) => new Set(ids).size === ids.length, { error: "botIds must be distinct" }),
 });
 export type ReorderBotsInput = z.infer<typeof ReorderBotsInput>;
+
+/** The whole sidebar order of a space's bots and group chats, first to last. */
+export const ReorderChatsInput = z.object({
+  chats: z
+    .array(z.object({ kind: z.enum(["bot", "group"]), id: Id }))
+    .min(1)
+    .refine(
+      (chats) => new Set(chats.map((chat) => `${chat.kind}:${chat.id}`)).size === chats.length,
+      {
+        error: "chats must be distinct",
+      },
+    ),
+});
+export type ReorderChatsInput = z.infer<typeof ReorderChatsInput>;
 
 export const BOT_SECTION_NAME_MAX_LENGTH = 60;
 export const BotSectionName = z.string().trim().min(1).max(BOT_SECTION_NAME_MAX_LENGTH);

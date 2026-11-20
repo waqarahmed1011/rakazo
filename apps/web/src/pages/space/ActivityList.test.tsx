@@ -186,3 +186,39 @@ it("says there are no runs yet when nothing has happened", async () => {
     vi.unstubAllGlobals();
   }
 });
+
+it("lists every group chat in its own section after Recent", async () => {
+  vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);
+  runs.list.mockResolvedValue({ runs: [] });
+  const opened = vi.fn();
+  const group = {
+    id: "group-1",
+    spaceId: "space-1",
+    name: "BTG Office",
+    pinned: false,
+    sectionId: null,
+    archivedAt: null,
+    members: [],
+    threadId: "thread-1",
+    preview: "Morning brief sent",
+    unread: false,
+    updatedAt: new Date().toISOString(),
+    createdAt: new Date().toISOString(),
+  };
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement("div");
+  document.body.append(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ActivityList {...listProps} groups={[group]} onOpenGroup={opened} />
+      </QueryClientProvider>,
+    );
+  });
+  await vi.waitFor(() => expect(container.textContent).toContain("Group chats"));
+  expect(container.textContent).toContain("BTG Office");
+  expect(container.textContent).not.toContain("No runs yet");
+  act(() => root.unmount());
+  container.remove();
+});

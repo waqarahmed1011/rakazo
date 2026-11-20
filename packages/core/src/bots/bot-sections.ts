@@ -67,3 +67,26 @@ export function reorderBotTo<T extends { id: string }>(
   reordered.splice(targetIndex, 0, source);
   return reordered;
 }
+
+type OrderedChat = { kind: "bot" | "group"; position?: number };
+
+/**
+ * Bots and group chats in one sidebar order. Both share one position sequence; a group chat
+ * comes before a bot it ties with, so groups that were never moved sit at the top.
+ */
+export function sortChats<T extends OrderedChat>(chats: readonly T[]): T[] {
+  return chats
+    .map((chat, index) => ({ chat, index }))
+    .sort(
+      (a, b) =>
+        (a.chat.position ?? 0) - (b.chat.position ?? 0) ||
+        (a.chat.kind === b.chat.kind ? 0 : a.chat.kind === "group" ? -1 : 1) ||
+        a.index - b.index,
+    )
+    .map(({ chat }) => chat);
+}
+
+/** A chat's key in a mixed bot and group-chat order. */
+export function chatKey(chat: { kind: "bot" | "group"; id: string }): string {
+  return `${chat.kind}:${chat.id}`;
+}
