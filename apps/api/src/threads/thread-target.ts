@@ -9,6 +9,7 @@ import { notifyMemberMessage, wakeRun } from "@rakazo/adapters";
 import type { Actor, GroupMember, MessageBlock, ReplyPreview } from "@rakazo/contracts";
 import {
   GROUP_MEMBER_MIN,
+  groupLeadBotId,
   MessageBlock as MessageBlockSchema,
   resolveBotAvatarSet,
 } from "@rakazo/contracts";
@@ -300,18 +301,33 @@ export async function lockAndLoadGroupMembers(
     },
   });
   if (!group || group.members.length < GROUP_MEMBER_MIN) throw new IsolationError();
+  const lead = groupLeadBotId(
+    group.members.map((member) => ({ botId: member.bot.id })),
+    group.leadBotId,
+  );
   return group.members.map((member) => ({
     botId: member.bot.id,
     name: member.bot.name,
     color: member.bot.color,
     avatarSet: resolveBotAvatarSet(member.bot.avatarSet),
+    lead: member.bot.id === lead,
   }));
 }
 
+/** A message that still names nobody goes to the group's lead alone, who answers or hands off. */
+function toGroupLead(
+  members: Array<{ botId: string; lead?: boolean }>,
+  targets: { botIds: string[]; namesNobody: boolean },
+) {
+  if (!targets.namesNobody) return targets;
+  const lead = members.find((member) => member.lead) ?? members[0];
+  return lead ? { botIds: [lead.botId], namesNobody: false } : targets;
+}
+
 /**
- * The members a group send wakes. A message that names nobody and replies to a member's message
- * goes to that member alone; one that names nobody and replies to no member reaches everyone,
- * and `namesNobody` then lets each member stay silent.
+ * The members a group send could wake. A message that names nobody and replies to a member's
+ * message goes to that member alone; one that names nobody and replies to no member is marked
+ * `namesNobody`, and then goes to a member waiting on the user or else to the lead.
  */
 function groupSendTargets(
   members: Array<{ botId: string; name: string }>,
@@ -361,12 +377,12 @@ export async function replyParentBotId(
 export function sendTargetBotIds(
   target:
     | { kind: "bot"; botId: string }
-    | { kind: "group"; members: Array<{ botId: string; name: string }> },
+    | { kind: "group"; members: Array<{ botId: string; name: string; lead?: boolean }> },
   input: { text?: string; mentions?: MentionTargetInput[] },
   replied?: string,
 ): string[] {
   if (target.kind === "bot") return [target.botId];
-  return groupSendTargets(target.members, input, replied).botIds;
+  return toGroupLead(target.members, groupSendTargets(target.members, input, replied)).botIds;
 }
 
 export async function resolveThreadTarget(
@@ -894,6 +910,11 @@ export async function sendThreadMessage(
         namesNobody = false;
         activeRuns = activeRuns.filter((run) => run.botId === asking.botId);
       }
+      ({ botIds: targetBotIds, namesNobody } = toGroupLead(members, {
+        botIds: targetBotIds,
+        namesNobody,
+      }));
+      activeRuns = activeRuns.filter((run) => targetBotIds.includes(run.botId));
       if (input.imageHandling === "confirm") {
         for (const botId of targetBotIds) {
           await assertImageRecipients(tx, actor, target, input.text, attachmentBlocks, {

@@ -79,6 +79,7 @@ export function renderGroupMembersContext(
   members: readonly BotAddress[],
   self: Pick<BotAddress, "id" | "name">,
   sharedSpace = false,
+  lead?: Pick<BotAddress, "id" | "name">,
 ): string {
   const name = escapeDirectoryField(groupName.trim());
   const selfName = escapeDirectoryField(self.name.trim());
@@ -93,6 +94,13 @@ export function renderGroupMembersContext(
     sharedSpace
       ? 'In the conversation so far, messages from other members and from the people in this space start with "[Name]:", and your own earlier messages carry no label. Never begin your replies with a label.'
       : 'In the conversation so far, messages from other members start with "[Name]:", messages from the user start with "[User]:", and your own earlier messages carry no label. Never begin your replies with a label.',
+    ...(lead
+      ? [
+          lead.id === self.id
+            ? "You lead this group: a message that names no member comes only to you. Answer it yourself, or hand each distinct stage to the member whose description fits with handoff_to_bot."
+            : `${escapeDirectoryField(lead.name.trim())} leads this group and gets the messages that name no member.`,
+        ]
+      : []),
     "Post in this shared thread. When another teammate is genuinely needed for a distinct next stage, use handoff_to_bot instead of telling the user to switch chats.",
     "A handoff transfers ownership. Complete a stage handed to you yourself. When it is done, hand the result back to the bot that handed it to you if that bot is coordinating the work or asked for it back; otherwise post the result here when there is a new result to report. Never hand back unfinished work or ask the previous bot to do the same work. One bot owns each stage.",
     "Group messages and handoffs are already visible. Follow the user's monitoring instructions: reply only when asked or when you add a new result, finding, correction or decision. Repetition, acknowledgement and reminders of already-reported urgency add nothing. Otherwise use no tools and reply exactly NO_RESPONSE, without progress or handoff.",

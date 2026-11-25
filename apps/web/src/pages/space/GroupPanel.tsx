@@ -1,7 +1,12 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, Group } from "@rakazo/contracts";
-import { GROUP_MEMBER_MAX, GROUP_MEMBER_MIN, GROUP_NAME_MAX_LENGTH } from "@rakazo/contracts";
-import { BotAvatar, Button, Checkbox, Input, SectionHeading } from "@rakazo/ui-web";
+import {
+  GROUP_MEMBER_MAX,
+  GROUP_MEMBER_MIN,
+  GROUP_NAME_MAX_LENGTH,
+  groupLeadBotId,
+} from "@rakazo/contracts";
+import { BotAvatar, Button, Checkbox, Input, OptionSelect, SectionHeading } from "@rakazo/ui-web";
 import { X } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
@@ -236,7 +241,7 @@ export function GroupSettings({
 }: {
   group: Group;
   bots: Bot[];
-  onSave: (input: { name?: string; botIds?: string[] }) => Promise<void>;
+  onSave: (input: { name?: string; botIds?: string[]; leadBotId?: string | null }) => Promise<void>;
   onRemove: () => Promise<void>;
   onClose: () => void;
   onOpenBot?: (botId: string) => void;
@@ -246,8 +251,15 @@ export function GroupSettings({
 }) {
   const { t } = useLingui();
   const nameId = useId();
+  const leadId = useId();
   const [name, setName] = useState(group.name);
   const [selected, setSelected] = useState(group.members.map((member) => member.botId));
+  const savedLead = groupLeadBotId(group.members, group.leadBotId) ?? null;
+  const [chosenLead, setChosenLead] = useState<string | null>(null);
+  // The lead must stay a member; one taken out falls back to the first selected member.
+  const lead =
+    (chosenLead && selected.includes(chosenLead) ? chosenLead : null) ??
+    (savedLead && selected.includes(savedLead) ? savedLead : (selected[0] ?? null));
   // The panel can open on a cached group. A refreshed one replaces whatever was not edited, so a
   // save does not send the cached name or members back as a change.
   const [shownGroup, setShownGroup] = useState(group);
@@ -299,6 +311,7 @@ export function GroupSettings({
         )
           ? undefined
           : selected,
+        leadBotId: lead !== savedLead ? lead : undefined,
       });
     } catch (cause) {
       setError(errorText(cause, t`Could not save group`));
@@ -342,6 +355,24 @@ export function GroupSettings({
           className="mt-2"
         />
       </label>
+      {selected.length > 0 ? (
+        <label htmlFor={leadId} className="mt-4 block text-body text-muted-foreground">
+          <Trans>Lead</Trans>
+          <OptionSelect
+            id={leadId}
+            className="mt-2 w-full"
+            value={lead}
+            options={selected.map((botId) => ({
+              value: botId,
+              label:
+                bots.find((bot) => bot.id === botId)?.name ??
+                group.members.find((member) => member.botId === botId)?.name ??
+                "",
+            }))}
+            onValueChange={setChosenLead}
+          />
+        </label>
+      ) : null}
       <MemberPicker bots={bots} selected={selected} onChange={setSelected} onOpenBot={onOpenBot} />
       <Button
         className="mt-5 w-full"

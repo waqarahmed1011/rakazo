@@ -13,7 +13,7 @@ export const GroupMemberSchema = z.object({
 export type GroupMember = z.infer<typeof GroupMemberSchema>;
 
 export const GROUP_MEMBER_MIN = 2;
-export const GROUP_MEMBER_MAX = 10;
+export const GROUP_MEMBER_MAX = 25;
 export const GROUP_NAME_MAX_LENGTH = 80;
 
 /** Preserve pick order and the group name limit without splitting a surrogate pair. */
@@ -31,6 +31,8 @@ export const GroupSchema = z.object({
   sectionId: Id.nullable(),
   /** Sidebar order, in the same sequence as bots' positions. */
   position: z.number().int().nonnegative().optional(),
+  /** The member a message naming nobody goes to; null means the first member. */
+  leadBotId: Id.nullable().optional(),
   archivedAt: z.string().nullable(),
   members: z.array(GroupMemberSchema),
   threadId: Id,
@@ -42,6 +44,14 @@ export const GroupSchema = z.object({
   createdAt: z.string(),
 });
 export type Group = z.infer<typeof GroupSchema>;
+
+/** The member that messages naming nobody go to: the chosen lead while it is a member, else the first. */
+export function groupLeadBotId(
+  members: readonly { botId: string }[],
+  leadBotId: string | null | undefined,
+): string | undefined {
+  return (members.find((member) => member.botId === leadBotId) ?? members[0])?.botId;
+}
 
 const GroupBotIds = z
   .array(Id)
@@ -63,6 +73,7 @@ export const UpdateGroupInput = z.object({
   expectedBotIds: z.array(Id).max(GROUP_MEMBER_MAX).optional(),
   pinned: z.boolean().optional(),
   sectionId: Id.nullable().optional(),
+  leadBotId: Id.nullable().optional(),
 });
 export type UpdateGroupInput = z.infer<typeof UpdateGroupInput>;
 

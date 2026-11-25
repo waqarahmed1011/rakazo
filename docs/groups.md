@@ -6,9 +6,9 @@ teammate.
 ## Start a group chat
 
 On web and desktop, choose **Create** (the **+** at the top of the sidebar), then
-**New group chat**. Name the group, pick 2 to 10 bots and choose **Create group**.
+**New group chat**. Name the group, pick 2 to 25 bots and choose **Create group**.
 
-On mobile, tap **Create** (**+**) in the chat list, then **New group chat**. Pick 2 to 10 bots and
+On mobile, tap **Create** (**+**) in the chat list, then **New group chat**. Pick 2 to 25 bots and
 tap **Next**. Enter a name and tap **Create**, or leave it blank and tap **Skip** to use the default
 name based on the selected bots.
 
@@ -16,8 +16,9 @@ Each bot keeps its own memory, computer and instructions; the group only shares 
 
 ## Who answers
 
-- By default, a message that doesn't mention a group member reaches every member. Each can choose
-  whether to reply.
+- A message that doesn't mention a group member goes to the group's lead, who answers or hands
+  the work to the right member. The lead is the first member unless you pick one in **Group
+  settings**.
 - Without a mention, a direct reply to a member's message goes only to that member. If you're not
   replying to a member and one or more members are waiting for your answer, the message goes only
   to the member who asked most recently.

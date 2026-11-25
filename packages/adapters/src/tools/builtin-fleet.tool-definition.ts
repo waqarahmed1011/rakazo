@@ -301,7 +301,7 @@ export const fleetTools: ConnectorTool[] = [
   {
     name: "create_group",
     description:
-      "Create a group of 2 to 10 of this user's bots. Pass bot_ids or bot_names (exact).",
+      "Create a group of 2 to 25 of this user's bots. Pass bot_ids or bot_names (exact).",
     inputSchema: {
       type: "object",
       properties: {
@@ -316,7 +316,7 @@ export const fleetTools: ConnectorTool[] = [
   {
     name: "update_group",
     description:
-      "Rename a group or add and remove its members. Works on any group of this user, not only ones you created. Identify it by group_id or group_name (exact). A group keeps 2 to 10 members.",
+      "Rename a group or add and remove its members. Works on any group of this user, not only ones you created. Identify it by group_id or group_name (exact). A group keeps 2 to 25 members.",
     inputSchema: {
       type: "object",
       properties: {

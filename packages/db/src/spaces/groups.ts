@@ -29,6 +29,7 @@ type GroupRecord = {
   pinned: boolean;
   sectionId: string | null;
   position: number;
+  leadBotId: string | null;
   archivedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -83,6 +84,7 @@ function mapGroup(group: GroupRecord): Group {
     pinned: group.pinned,
     sectionId: group.sectionId,
     position: group.position,
+    leadBotId: group.leadBotId,
     archivedAt: group.archivedAt?.toISOString() ?? null,
     members: mapGroupMembers(group.members),
     threadId: group.thread.id,
@@ -449,6 +451,7 @@ export function createGroupRepos(prisma: PrismaClient) {
         expectedBotIds?: string[];
         pinned?: boolean;
         sectionId?: string | null;
+        leadBotId?: string | null;
       },
     ): Promise<{ group: Group; cancelledRunIds: string[]; computers: RunTeardownTarget[] }> {
       const members = input.botIds ? await assertSpaceBots(prisma, actor, input.botIds) : undefined;
@@ -488,6 +491,16 @@ export function createGroupRepos(prisma: PrismaClient) {
         const nextBotIds = new Set(
           members?.map((member) => member.botId) ?? current.members.map((member) => member.botId),
         );
+        if (input.leadBotId && !nextBotIds.has(input.leadBotId)) {
+          throw new IsolationError("The lead must be a member of the group.");
+        }
+        // A lead taken out of the group hands the role back to the first member.
+        const leadBotId =
+          input.leadBotId !== undefined
+            ? input.leadBotId
+            : current.leadBotId && !nextBotIds.has(current.leadBotId)
+              ? null
+              : undefined;
         const removedBotIds = current.members
           .map((member) => member.botId)
           .filter((botId) => !nextBotIds.has(botId));
@@ -530,6 +543,7 @@ export function createGroupRepos(prisma: PrismaClient) {
             updatedAt: new Date(),
             pinned: input.pinned,
             sectionId: input.sectionId,
+            leadBotId,
           },
         });
         const loaded = await tx.chatGroup.findFirstOrThrow({

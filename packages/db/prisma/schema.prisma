@@ -1169,6 +1169,8 @@ model ChatGroup {
   section    BotSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   /// Sidebar order, shared with bots' positions so the two sort together.
   position   Int               @default(0)
+  /// The member that messages naming nobody go to; the first member when unset or no longer in it.
+  leadBotId  String?
   archivedAt DateTime?
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt

@@ -1,4 +1,4 @@
-import { MessageBlock } from "@rakazo/contracts";
+import { groupLeadBotId, MessageBlock } from "@rakazo/contracts";
 import {
   BOT_MESSAGE_MAX_LENGTH,
   BOT_MESSAGE_TOO_LONG,
@@ -258,11 +258,17 @@ export async function loadGroupContext(
     },
   });
   if (!group) return undefined;
+  const bots = group.members.map((member) => member.bot);
+  const leadId = groupLeadBotId(
+    bots.map((bot) => ({ botId: bot.id })),
+    group.leadBotId,
+  );
   return renderGroupMembersContext(
     group.name,
-    group.members.map((member) => member.bot),
+    bots,
     self,
     sharedSpace,
+    bots.find((bot) => bot.id === leadId),
   );
 }
 

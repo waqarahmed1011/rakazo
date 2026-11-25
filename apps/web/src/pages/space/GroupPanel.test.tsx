@@ -21,6 +21,7 @@ vi.mock("@rakazo/ui-web", async (importOriginal) => {
   const { Checkbox } = await importOriginal<typeof UiWeb>();
   return {
     Checkbox,
+    OptionSelect: () => <span />,
     BotAvatar: () => <span />,
     Button: (props: ComponentProps<"button">) => <button {...props} />,
     Input: (props: ComponentProps<"input">) => <input {...props} />,

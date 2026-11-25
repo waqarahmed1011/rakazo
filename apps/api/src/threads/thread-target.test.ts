@@ -2564,6 +2564,7 @@ describe("sendThreadMessage", () => {
         run: {
           findMany: vi.fn().mockResolvedValueOnce(activeRuns).mockResolvedValue([]),
           findFirst: vi.fn(),
+          update: vi.fn(),
           updateMany: vi.fn(),
           findUnique: vi.fn().mockResolvedValue({ status: "queued", startedAt: null }),
           create: vi.fn().mockResolvedValue({
@@ -2666,14 +2667,8 @@ describe("sendThreadMessage", () => {
               runId: steers ? "run-owner" : null,
             },
           });
-          // In a group, a message that names nobody also wakes the idle member, as its sender.
-          expect(
-            tx.run.create.mock.calls.map((call) => (call[0] as { data: unknown }).data),
-          ).toEqual(
-            target.kind === "group"
-              ? [expect.objectContaining({ botId: "bot-b", userId: sender })]
-              : [],
-          );
+          // In a group, a message that names nobody goes to the lead alone, so no idle member wakes.
+          expect(tx.run.create).not.toHaveBeenCalled();
           if (steers) expect(releaseTakeover).toHaveBeenCalledWith("run-owner");
           else expect(releaseTakeover).not.toHaveBeenCalledWith("run-owner");
         }
@@ -3232,10 +3227,10 @@ describe("sendThreadMessage", () => {
       return { tx, created: tx.run.create.mock.calls.map(([args]) => args.data) };
     }
 
-    it("that names nobody wakes every member, each free to stay silent", async () => {
+    it("that names nobody wakes only the lead, the first member by default, who must reply", async () => {
       const { created } = await sendToGroup("what is the plan?");
-      expect(created.map((run) => run.botId)).toEqual(["bot-a", "bot-b"]);
-      expect(created.map((run) => run.groupReplyOptional)).toEqual([true, true]);
+      expect(created.map((run) => run.botId)).toEqual(["bot-a"]);
+      expect(created.map((run) => run.groupReplyOptional)).toEqual([false]);
     });
 
     it("that names one member wakes only that member, who must reply", async () => {
@@ -3254,10 +3249,9 @@ describe("sendThreadMessage", () => {
       expect(created.map((run) => run.groupReplyOptional)).toEqual([false, false]);
     });
 
-    it("that only names someone outside the group still reaches every member", async () => {
+    it("that only names someone outside the group goes to the lead", async () => {
       const { created } = await sendToGroup("@Zed what is the plan?");
-      expect(created.map((run) => run.botId)).toEqual(["bot-a", "bot-b"]);
-      expect(created.map((run) => run.groupReplyOptional)).toEqual([true, true]);
+      expect(created.map((run) => run.botId)).toEqual(["bot-a"]);
     });
 
     it("that replies to a member's message goes to that member, who must answer", async () => {
@@ -3277,13 +3271,13 @@ describe("sendThreadMessage", () => {
       expect(created.map((run) => run.botId)).toEqual(["bot-a"]);
     });
 
-    it("that replies to a person's message, or to a bot outside the group, reaches everyone", async () => {
+    it("that replies to a person's message, or to a bot outside the group, goes to the lead", async () => {
       for (const replyTo of [
         { role: "user", botId: null },
         { role: "bot", botId: "bot-outside" },
       ]) {
         const { created } = await sendToGroup("blue", undefined, [], replyTo);
-        expect(created.map((run) => run.botId)).toEqual(["bot-a", "bot-b"]);
+        expect(created.map((run) => run.botId)).toEqual(["bot-a"]);
       }
     });
 
@@ -3310,15 +3304,15 @@ describe("sendThreadMessage", () => {
       });
     });
 
-    it("that names a member working on an unnamed message makes its reply required", async () => {
+    it("that reaches a member working on an unnamed message makes its reply required", async () => {
       const working = { id: "run-old", botId: "bot-a", status: "running", trigger: "user" };
-      const named = await sendToGroup("@Alpha and the budget?", undefined, [working]);
-      expect(named.tx.run.update).toHaveBeenCalledWith({
-        where: { id: "run-old" },
-        data: { groupReplyOptional: false },
-      });
-      const unnamed = await sendToGroup("and the budget?", undefined, [working]);
-      expect(unnamed.tx.run.update).not.toHaveBeenCalled();
+      for (const text of ["@Alpha and the budget?", "and the budget?"]) {
+        const sent = await sendToGroup(text, undefined, [working]);
+        expect(sent.tx.run.update).toHaveBeenCalledWith({
+          where: { id: "run-old" },
+          data: { groupReplyOptional: false },
+        });
+      }
     });
   });
 
@@ -5161,8 +5155,20 @@ describe("sendTargetBotIds", () => {
 
   it("lets a mention beat the reply target, and ignores a bot outside the group", () => {
     expect(sendTargetBotIds(group, { text: "@Alpha and you?" }, "bot-b")).toEqual(["bot-a"]);
-    expect(sendTargetBotIds(group, { text: "blue" }, "bot-outside")).toEqual(["bot-a", "bot-b"]);
-    expect(sendTargetBotIds(group, { text: "blue" })).toEqual(["bot-a", "bot-b"]);
+    expect(sendTargetBotIds(group, { text: "blue" }, "bot-outside")).toEqual(["bot-a"]);
+    expect(sendTargetBotIds(group, { text: "blue" })).toEqual(["bot-a"]);
+  });
+
+  it("sends a message that names nobody to the chosen lead", () => {
+    const led = {
+      ...group,
+      members: [
+        { botId: "bot-a", name: "Alpha" },
+        { botId: "bot-b", name: "Beta", lead: true },
+      ],
+    };
+    expect(sendTargetBotIds(led, { text: "blue" })).toEqual(["bot-b"]);
+    expect(sendTargetBotIds(led, { text: "@everyone blue" })).toEqual(["bot-a", "bot-b"]);
   });
 
   it("finds the bot a send replies to only for a bot's message", async () => {
