@@ -1,4 +1,3 @@
-import { MEMORY_REVISION_CONFLICT_ERROR, MemoryRevisionConflictError } from "@rakazo/adapter-kit";
 import { HistoryReadInputSchema, HistorySearchInputSchema } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import { memoryTools, withoutBlankFields } from "./run-tools-memory.js";
@@ -58,62 +57,67 @@ it.each(["Provider-generated context", ""])(
   },
 );
 
-describe("saving shared memory over a newer revision", () => {
-  const save = (failure: Error) => {
-    const finish = vi.fn((result: unknown) => result);
-    const ctx = {
-      runId: "run-1",
-      thread: { id: "thread-1" },
-      context: {},
-      deps: {
-        memory: {
-          read: vi.fn(async () => ({ documents: [{ revision: 1 }] })),
-          commit: vi.fn().mockRejectedValue(failure),
-        },
-      },
+describe("saving shared memory", () => {
+  it("proposes the change for a space admin instead of writing it", async () => {
+    const memory = {
+      read: vi.fn(async () => ({ documents: [{ revision: 3 }] })),
+      commit: vi.fn(),
     };
-    return memoryTools.save_shared_memory!(
+    const create = vi.fn(async () => ({ id: "suggestion-1" }));
+    const ctx = {
+      run: { spaceId: "space-1", userId: "user-1" },
+      bot: { id: "bot-1" },
+      context: {},
+      deps: { memory, prisma: { memorySuggestion: { findFirst: vi.fn(), create } } },
+    };
+    const result = await memoryTools.save_shared_memory!(
       ctx as never,
-      { args: { path: "team.md", content: "new" }, finish } as never,
+      { args: { path: "team.md", content: "new" }, finish: (value: unknown) => value } as never,
     );
-  };
-
-  it("tells the bot to read again", async () => {
-    await expect(save(new MemoryRevisionConflictError())).resolves.toEqual({
-      error: MEMORY_REVISION_CONFLICT_ERROR,
-    });
-  });
-
-  it("lets another failure through, even one quoting the conflict", async () => {
-    const failure = new Error(MEMORY_REVISION_CONFLICT_ERROR);
-    await expect(save(failure)).rejects.toBe(failure);
+    expect(result).toMatchObject({ ok: true, path: "team.md" });
+    expect(memory.commit).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ path: "team.md", content: "new", baseRevision: 3 }),
+      }),
+    );
   });
 });
 
 describe("deleting a shared memory document", () => {
-  const del = (path: string, documents: Array<{ id: string; path: string }>, removed = true) => {
+  const del = (path: string, documents: Array<{ id: string; path: string; revision?: number }>) => {
     const memory = {
       read: vi.fn(async () => ({ documents })),
-      remove: vi.fn(async () => ({ removed })),
+      remove: vi.fn(async () => ({ removed: true })),
     };
-    const ctx = { context: { spaceId: "space-1" }, deps: { memory } };
+    const create = vi.fn(async () => ({ id: "suggestion-1" }));
+    const ctx = {
+      run: { spaceId: "space-1", userId: "user-1" },
+      bot: { id: "bot-1" },
+      context: { spaceId: "space-1" },
+      deps: { memory, prisma: { memorySuggestion: { findFirst: vi.fn(), create } } },
+    };
     const result = memoryTools.delete_shared_memory!(
       ctx as never,
       { args: { path }, finish: (value: unknown) => value } as never,
     );
-    return { memory, result };
+    return { memory, create, result };
   };
 
-  it("removes exactly the document it read", async () => {
-    const { memory, result } = del(" team.md ", [{ id: "doc-1", path: "team.md" }]);
-    await expect(result).resolves.toEqual({ ok: true, path: "team.md" });
+  it("proposes deleting exactly the document it read, without removing it", async () => {
+    const { memory, create, result } = del(" team.md ", [
+      { id: "doc-1", path: "team.md", revision: 2 },
+    ]);
+    await expect(result).resolves.toMatchObject({ ok: true, path: "team.md" });
     expect(memory.read).toHaveBeenCalledWith(
       { scope: "user", path: "team.md" },
       { spaceId: "space-1" },
     );
-    expect(memory.remove).toHaveBeenCalledWith(
-      { id: "doc-1", scope: "user", path: "team.md" },
-      { spaceId: "space-1" },
+    expect(memory.remove).not.toHaveBeenCalled();
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ path: "team.md", content: null, baseRevision: 2 }),
+      }),
     );
   });
 
@@ -129,13 +133,6 @@ describe("deleting a shared memory document", () => {
     const { memory, result } = del("gone.md", []);
     await expect(result).resolves.toEqual({ error: "No shared memory document named gone.md." });
     expect(memory.remove).not.toHaveBeenCalled();
-  });
-
-  it("says when the document was deleted before it was removed", async () => {
-    const { result } = del("team.md", [{ id: "doc-1", path: "team.md" }], false);
-    await expect(result).resolves.toEqual({
-      error: "team.md was already deleted.",
-    });
   });
 });
 

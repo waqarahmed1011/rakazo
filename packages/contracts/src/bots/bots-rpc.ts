@@ -33,7 +33,12 @@ import {
   UpdateBotInput,
 } from "./bot.js";
 import { BotEmailAddressesSchema, BotEmailAddressSchema, BotEmailNameSchema } from "./bot-email.js";
-import { MemoryDocumentSchema, MemoryPromptBudgetSchema, MemoryScopeSchema } from "./bot-memory.js";
+import {
+  MemoryDocumentSchema,
+  MemoryPromptBudgetSchema,
+  MemoryScopeSchema,
+  MemorySuggestionSchema,
+} from "./bot-memory.js";
 import {
   BotSecretMetadata,
   BotSecretPutInput,
@@ -142,7 +147,14 @@ export const botsRpc = {
         }),
       )
       .output(MemoryDocumentSchema),
-    remove: oc.input(z.object({ documentId: Id })).output(z.object({ ok: z.literal(true) })),
+    remove: oc
+      .input(z.object({ documentId: Id }))
+      .output(z.object({ ok: z.literal(true), pendingApproval: z.boolean().optional() })),
+    /** Space admins only: proposed changes to shared memory, oldest first. */
+    suggestions: oc.output(z.array(MemorySuggestionSchema)),
+    decideSuggestion: oc
+      .input(z.object({ id: Id, approve: z.boolean() }))
+      .output(z.object({ outcome: z.enum(["approved", "rejected", "outdated"]) })),
     exportMarkdown: oc.input(z.object({ botId: Id.optional() })).output(z.string()),
     providerConfig: oc.output(SpaceMemoryConfigSchema.nullable()),
     /** The providers a Space can connect, with the settings form each one asks for. */

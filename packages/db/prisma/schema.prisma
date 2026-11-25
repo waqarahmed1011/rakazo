@@ -782,6 +782,7 @@ model Space {
   messagingInstallations MessagingInstallation[]
   messagingInstallSessions MessagingInstallSession[]
   approvalWaits               ApprovalWait[]
+  memorySuggestions           MemorySuggestion[]
 }
 
 /// A space's data encryption key, wrapped by a master key. There is no foreign key:
@@ -1924,6 +1925,28 @@ model MemoryDocument {
   @@unique([spaceId, scope, botId, path])
   @@index([spaceId, userId])
   @@map("memory_documents")
+}
+
+/// A change to the space's shared memory waiting for a space admin: a bot's, or a member's who
+/// is not an admin. `content` null proposes deleting the document.
+model MemorySuggestion {
+  id              String    @id @default(cuid())
+  spaceId         String
+  space           Space     @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  userId          String
+  botId           String?
+  path            String
+  content         String?
+  /// The document's revision when it was proposed; 0 for a new document.
+  baseRevision    Int
+  status          String    @default("pending")
+  decidedByUserId String?
+  decidedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([spaceId, status, createdAt])
+  @@map("memory_suggestions")
 }
 
 model MemoryRevision {

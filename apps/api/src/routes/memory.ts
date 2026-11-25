@@ -11,7 +11,15 @@ import {
 } from "@rakazo/adapters";
 import { isDeletableMemoryDocument } from "@rakazo/contracts";
 import { ClientError } from "@rakazo/core";
-import { findSpaceMemoryConfig, IsolationError } from "@rakazo/db";
+import {
+  closeMemorySuggestion,
+  findSpaceMemoryConfig,
+  IsolationError,
+  isSpaceManager,
+  pendingMemorySuggestions,
+  proposeSharedMemory,
+  requireSpaceOwner,
+} from "@rakazo/db";
 import {
   disconnectMemoryProvider,
   persistMemoryProviderConfig,
@@ -69,6 +77,26 @@ export function memoryRoutes(ctx: RouterContext) {
           },
         });
         if (!doc) throw new IsolationError();
+        // Only space admins change the company brain directly; anyone else proposes.
+        if (doc.scope === "user" && !(await isSpaceManager(deps.prisma, context.actor))) {
+          await proposeSharedMemory(deps.prisma, {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            path: doc.path,
+            content: input.content,
+            baseRevision: doc.revision,
+          });
+          return {
+            id: doc.id,
+            scope: "user" as const,
+            botId: doc.botId,
+            path: doc.path,
+            content: doc.content,
+            revision: doc.revision,
+            updatedAt: doc.updatedAt.toISOString(),
+            pendingApproval: true,
+          };
+        }
         const updated = await deps.memory
           .commit(
             {
@@ -115,6 +143,16 @@ export function memoryRoutes(ctx: RouterContext) {
             message: `${doc.path} cannot be deleted; edit its content instead.`,
           });
         }
+        if (doc.scope === "user" && !(await isSpaceManager(deps.prisma, context.actor))) {
+          await proposeSharedMemory(deps.prisma, {
+            spaceId: context.actor.spaceId,
+            userId: context.actor.userId,
+            path: doc.path,
+            content: null,
+            baseRevision: doc.revision,
+          });
+          return { ok: true as const, pendingApproval: true };
+        }
         await deps.memory.remove(
           {
             id: doc.id,
@@ -131,6 +169,76 @@ export function memoryRoutes(ctx: RouterContext) {
           },
         );
         return { ok: true as const };
+      }),
+      suggestions: authed.memory.suggestions.handler(async ({ context }) => {
+        await requireSpaceOwner(deps.prisma, context.actor);
+        const [pending, docs] = await Promise.all([
+          pendingMemorySuggestions(deps.prisma, context.actor.spaceId),
+          deps.prisma.memoryDocument.findMany({
+            where: { spaceId: context.actor.spaceId, scope: "user" },
+            select: { path: true, content: true },
+          }),
+        ]);
+        const current = new Map(docs.map((doc) => [doc.path, doc.content]));
+        return pending.map((row) => ({
+          id: row.id,
+          path: row.path,
+          content: row.content,
+          current: current.get(row.path) ?? null,
+          botId: row.botId,
+          userId: row.userId,
+          createdAt: row.createdAt.toISOString(),
+        }));
+      }),
+      decideSuggestion: authed.memory.decideSuggestion.handler(async ({ context, input }) => {
+        await requireSpaceOwner(deps.prisma, context.actor);
+        const { spaceId, userId } = context.actor;
+        const decision = { spaceId, id: input.id, decidedByUserId: userId };
+        const suggestion = await deps.prisma.memorySuggestion.findFirst({
+          where: { id: input.id, spaceId, status: "pending" },
+        });
+        if (!suggestion) throw new IsolationError();
+        if (!input.approve) {
+          await closeMemorySuggestion(deps.prisma, decision, "rejected");
+          return { outcome: "rejected" as const };
+        }
+        const memoryContext = {
+          operationId: "mem",
+          traceId: "mem",
+          spaceId,
+          userId,
+          signal: new AbortController().signal,
+        };
+        const doc = await deps.prisma.memoryDocument.findFirst({
+          where: { spaceId, scope: "user", path: suggestion.path },
+        });
+        // Someone changed the document since: applying this would undo their change.
+        if ((doc?.revision ?? 0) !== suggestion.baseRevision) {
+          await closeMemorySuggestion(deps.prisma, decision, "outdated");
+          return { outcome: "outdated" as const };
+        }
+        if (suggestion.content === null) {
+          if (doc)
+            await deps.memory.remove({ id: doc.id, scope: "user", path: doc.path }, memoryContext);
+        } else {
+          await deps.memory
+            .commit(
+              {
+                scope: "user",
+                path: suggestion.path,
+                content: suggestion.content,
+                expectedRevision: suggestion.baseRevision,
+              },
+              memoryContext,
+            )
+            .catch((error: unknown) => {
+              if (error instanceof MemoryRevisionConflictError)
+                throw new ClientError("CONFLICT", error.message);
+              throw error;
+            });
+        }
+        await closeMemorySuggestion(deps.prisma, decision, "approved");
+        return { outcome: "approved" as const };
       }),
       exportMarkdown: authed.memory.exportMarkdown.handler(async ({ context, input }) => {
         const docs = await deps.prisma.memoryDocument.findMany({

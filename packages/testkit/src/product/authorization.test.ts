@@ -555,6 +555,8 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["usage/limits"],
       ["usage/breakdown", {}],
       ["usage/team", { days: 7 }],
+      ["memory/suggestions"],
+      ["memory/decideSuggestion", { id: "missing-suggestion", approve: false }],
       ["export/bot", { botId: "missing-bot" }],
       ["export/accountToken"],
       ["notifications/subscribe"],

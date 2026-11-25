@@ -92,6 +92,13 @@ export const ENCRYPTED_MODELS: Record<string, ModelSpec> = {
     space: { column: "spaceId" },
     ownerRelation: "user",
   },
+  /** Proposed company-brain text, as sensitive as the documents it would change. */
+  MemorySuggestion: {
+    table: "memory_suggestions",
+    fields: { content: {} },
+    space: { column: "spaceId" },
+    ownerRelation: "user",
+  },
   MemoryRevision: {
     table: "memory_revisions",
     fields: { content: {} },

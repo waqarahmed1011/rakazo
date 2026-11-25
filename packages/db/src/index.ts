@@ -49,6 +49,7 @@ export * from "./encryption/credential-secrets.js";
 export * from "./history/content-export.js";
 export * from "./history/history-retention.js";
 export * from "./history/history-retrieval.js";
+export * from "./memory/memory-suggestions.js";
 export * from "./messaging/messaging.js";
 export * from "./models/model-credentials.js";
 export * from "./models/model-roles.js";

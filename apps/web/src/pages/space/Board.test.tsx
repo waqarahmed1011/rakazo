@@ -209,7 +209,7 @@ it("renders status columns and opens a ticket with comments", async () => {
   try {
     expect(
       Array.from(page.container.querySelectorAll("h2")).map((node) => node.textContent),
-    ).toEqual(["To do", "In progress", "In review", "Blocked", "Done", "Won't do"]);
+    ).toEqual(["Proposed", "To do", "In progress", "In review", "Blocked", "Done", "Won't do"]);
     await act(async () =>
       (
         page.container.querySelector('[data-testid="board-card-ticket-1"]') as HTMLButtonElement

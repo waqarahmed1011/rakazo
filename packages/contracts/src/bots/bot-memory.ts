@@ -25,8 +25,24 @@ export const MemoryDocumentSchema = z.object({
   content: z.string(),
   revision: z.number().int(),
   updatedAt: z.string(),
+  /** The change was not saved: it waits for a space admin as a suggestion. */
+  pendingApproval: z.boolean().optional(),
 });
 export type MemoryDocument = z.infer<typeof MemoryDocumentSchema>;
+
+/** A proposed change to shared memory, waiting for a space admin. */
+export const MemorySuggestionSchema = z.object({
+  id: Id,
+  path: z.string(),
+  /** null proposes deleting the document. */
+  content: z.string().nullable(),
+  /** What the document holds now; null when it does not exist yet. */
+  current: z.string().nullable(),
+  botId: Id.nullable(),
+  userId: Id,
+  createdAt: z.string(),
+});
+export type MemorySuggestion = z.infer<typeof MemorySuggestionSchema>;
 
 /** Which of a bot's memory documents reach the prompt, and what did not fit. */
 export const MemoryPromptDocumentUseSchema = z.object({

@@ -5,7 +5,7 @@ import {
   isDeletableMemoryDocument,
   MEMORY_INDEX_PATH,
 } from "@rakazo/contracts";
-import { readHistory, searchHistory } from "@rakazo/db";
+import { proposeSharedMemory, readHistory, searchHistory } from "@rakazo/db";
 import { redactConnectorPayload } from "../../integrations/connector-safety.js";
 import { stampMemoryEntry, userMemoryDate } from "../../memory/memory-expiry.js";
 import { editMemory } from "../../memory/memory-tools.js";
@@ -16,6 +16,7 @@ import type { RunContext } from "../assembly/run-context.js";
 import { markReadOutsideContent } from "../assembly/run-context.js";
 import { argsError } from "../turn/tool-args.js";
 import type { ToolCall, ToolHandlers } from "./run-tool-gate.js";
+import { SHARED_MEMORY_PROPOSED } from "./shared-memory-review.prompt.js";
 
 /** Cross-chat history requires a surviving direct human request in this app thread. */
 export function historyMyChatsAllowed(
@@ -148,36 +149,25 @@ export const memoryTools: ToolHandlers = {
     }
   },
   async save_shared_memory(ctx, call) {
-    const { deps, runId, thread, context } = ctx;
+    const { deps, run, bot, context } = ctx;
     const { args } = call;
     const invalid = sharedMemorySaveError(args);
     if (invalid) return call.finish({ error: invalid });
     const path = String(args.path ?? "").trim();
-    // The save replaces the whole document. Pass the revision just read so a
-    // concurrent edit is rejected instead of overwritten.
+    // A bot never writes the company brain directly: its change waits for a space admin.
     const snapshot = await deps.memory.read({ scope: "user", path }, context);
-    const expectedRevision = snapshot.documents[0]?.revision ?? 0;
-    try {
-      const saved = await deps.memory.commit(
-        {
-          scope: "user",
-          path,
-          content: String(args.content ?? ""),
-          expectedRevision,
-          sourceRunId: runId,
-          sourceThreadId: thread.id,
-        },
-        context,
-      );
-      return call.finish({ ok: true, path: saved.path, revision: saved.revision });
-    } catch (error) {
-      if (error instanceof MemoryRevisionConflictError)
-        return call.finish({ error: error.message });
-      throw error;
-    }
+    await proposeSharedMemory(deps.prisma, {
+      spaceId: run.spaceId,
+      userId: run.userId,
+      botId: bot.id,
+      path,
+      content: String(args.content ?? ""),
+      baseRevision: snapshot.documents[0]?.revision ?? 0,
+    });
+    return call.finish({ ok: true, path, status: SHARED_MEMORY_PROPOSED });
   },
   async delete_shared_memory(ctx, call) {
-    const { deps, context } = ctx;
+    const { deps, run, bot, context } = ctx;
     const path = String(call.args.path ?? "").trim();
     if (!path) return call.finish({ error: "path is required" });
     if (!isDeletableMemoryDocument(path)) {
@@ -185,13 +175,15 @@ export const memoryTools: ToolHandlers = {
     }
     const doc = (await deps.memory.read({ scope: "user", path }, context)).documents[0];
     if (!doc) return call.finish({ error: `No shared memory document named ${path}.` });
-    // The id pins the document just read, so a newer one saved at the same path stays.
-    const { removed } = await deps.memory.remove(
-      { id: doc.id, scope: "user", path: doc.path },
-      context,
-    );
-    if (!removed) return call.finish({ error: `${path} was already deleted.` });
-    return call.finish({ ok: true, path: doc.path });
+    await proposeSharedMemory(deps.prisma, {
+      spaceId: run.spaceId,
+      userId: run.userId,
+      botId: bot.id,
+      path: doc.path,
+      content: null,
+      baseRevision: doc.revision,
+    });
+    return call.finish({ ok: true, path: doc.path, status: SHARED_MEMORY_PROPOSED });
   },
   async recall_memory(ctx, call) {
     const { bot, thread, context } = ctx;

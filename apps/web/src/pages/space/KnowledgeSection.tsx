@@ -3,7 +3,7 @@ import { ORPCError } from "@orpc/client";
 import type { AgentSkill, AgentSkillCatalogEntry, MemoryDocument } from "@rakazo/contracts";
 import { isDeletableMemoryDocument, isEmptyBotMemory } from "@rakazo/contracts";
 import { fetchFresh, writeSaved } from "@rakazo/core/query";
-import { Badge, Button, SectionHeading, Skeleton, Textarea } from "@rakazo/ui-web";
+import { Badge, Button, SectionHeading, Skeleton, Textarea, toast } from "@rakazo/ui-web";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@rakazo/ui-web/components/ui/tooltip";
 import { skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Download, Plus } from "lucide-react";
@@ -122,7 +122,12 @@ function MemoryDocumentList({
         return;
       }
       if (kind === "remove") {
-        await rpc.memory.remove({ documentId: doc.id });
+        const removed = await rpc.memory.remove({ documentId: doc.id });
+        // Only a space admin changes the company brain; anyone else's change waits for one.
+        if (removed.pendingApproval) {
+          toast(t`Sent to an admin for approval`);
+          return;
+        }
         await setDocs((current) => current.filter((entry) => entry.id !== doc.id));
         return;
       }
@@ -131,6 +136,10 @@ function MemoryDocumentList({
         content: draft,
         expectedRevision: loadedRevision,
       });
+      if (updated.pendingApproval) {
+        toast(t`Sent to an admin for approval`);
+        return;
+      }
       await setDocs((current) =>
         current.map((entry) => (entry.id === updated.id ? updated : entry)),
       );

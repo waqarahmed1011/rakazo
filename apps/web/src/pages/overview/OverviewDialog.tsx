@@ -21,6 +21,7 @@ import { useSave, useSpaceQueries } from "../../lib/query/query";
 import { errorText } from "../../lib/query/user-error";
 import { FALLBACK_BOT_COLOR } from "../shell/chat/chat-shared";
 import { useTicketStatusLabels } from "../space/ticket-status";
+import { CompanyBrainSection } from "./CompanyBrainSection";
 import { ImpactSection } from "./ImpactSection";
 import { nextRoutineRun, overviewModel } from "./overview-model";
 
@@ -293,6 +294,8 @@ export function OverviewDialog({ onClose }: { onClose: () => void }) {
           </div>
 
           <ImpactSection bots={bots} avatar={avatar} money={money} />
+
+          <CompanyBrainSection bots={bots} avatar={avatar} />
 
           {bots.length > 0 ? (
             <section>

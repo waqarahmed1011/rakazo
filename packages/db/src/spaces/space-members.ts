@@ -115,6 +115,18 @@ export async function requireSpaceOwner(
 }
 
 /** The space's owner, or an owner or admin of its organization who is in the space. */
+/** Whether the person may manage the space: its owner, or an owner or admin of its organization. */
+export async function isSpaceManager(
+  db: Pick<PrismaClient, "spaceMember">,
+  input: SpaceRef,
+): Promise<boolean> {
+  const membership = await db.spaceMember.findUnique({
+    where: { spaceId_userId: { spaceId: input.spaceId, userId: input.userId } },
+    select: { role: true, member: { select: { role: true } } },
+  });
+  return Boolean(membership && managesSpace(membership.role, membership.member.role));
+}
+
 function managesSpace(spaceRole: string, organizationRole: string): boolean {
   if (isOwnerRole(spaceRole)) return true;
   return organizationRole
