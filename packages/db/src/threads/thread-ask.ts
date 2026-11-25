@@ -73,7 +73,7 @@ export interface PauseRunForInput {
    * Unredacted choice actions for resume. Persisted only on the run checkpoint
    * (not in message blocks) so clients still see redacted labels.
    */
-  offeredActions?: Array<{ id: string; label: string }>;
+  offeredActions?: Array<{ id: string; label: string; description?: string }>;
   /** Commits with the pause, as a job that must exist once the run waits. */
   onPaused?: (tx: Prisma.TransactionClient) => Promise<void>;
 }

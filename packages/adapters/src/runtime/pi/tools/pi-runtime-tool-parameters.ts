@@ -75,13 +75,22 @@ function builtinParameters(tool: ConnectorTool) {
   }
   if (tool.name === "ask_user") {
     return Type.Object({
+      topic: Type.Optional(Type.String({ maxLength: 40 })),
       question: Type.String({ maxLength: 240 }),
       detail: Type.Optional(Type.String({ maxLength: MAX_APPROVAL_DETAIL_LENGTH })),
       options: Type.Array(Type.String({ minLength: 1, maxLength: 80 }), {
         minItems: 2,
-        maxItems: 4,
+        maxItems: 6,
         uniqueItems: true,
       }),
+      option_details: Type.Optional(
+        Type.Array(Type.String({ maxLength: 120 }), {
+          maxItems: 6,
+          description: "Per option, same order: what choosing it means.",
+        }),
+      ),
+      multiple: Type.Optional(Type.Boolean()),
+      allow_other: Type.Optional(Type.Boolean()),
     });
   }
   if (tool.name === "shell" || tool.name === "user_computer_shell") {

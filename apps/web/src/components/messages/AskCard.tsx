@@ -4,12 +4,10 @@ import { ChatMarkdown } from "@rakazo/chat-ui/web";
 import type { AskReceipt, LoginFieldInput, ThreadMessage } from "@rakazo/contracts";
 import { AGENT_IMPORT_ASK_ACTION_ID, BOT_INSTRUCTIONS_MAX_LENGTH } from "@rakazo/contracts";
 import {
-  askOptionLetter,
   isApprovalAskBlock,
   isQuestionAskBlock,
   isSecretAskBlock,
   receiptItems,
-  resolveAskChoice,
   selectedAskActionLabel,
 } from "@rakazo/core";
 import { routineApprovalActionLabel } from "@rakazo/i18n/routine-approval";
@@ -28,6 +26,7 @@ import type { RpcClient } from "../../lib/query/rpc";
 import { rpc as selectedSpaceRpc } from "../../lib/query/rpc";
 import { errorText } from "../../lib/query/user-error";
 import { BuiCard } from "../ai/primitives";
+import { ChoiceQuestion } from "./ChoiceQuestion";
 import { OptionRow } from "./OptionRow";
 import { RoutineApprovalDetail } from "./RoutineApprovalDetail";
 import { SecretAskCard } from "./SecretAskCard";
@@ -187,8 +186,6 @@ function PromptAskCard({
     : askActions;
   const optionQuestion =
     !approvalActions && !block.instructionUpdate && Boolean(askActions?.length);
-  const chosenOption =
-    answered && displayedAnswer ? resolveAskChoice(displayedAnswer, askActions) : undefined;
   // Typed replies already have their own message; the question must not repeat them.
   const typedAnswer =
     answered &&
@@ -285,6 +282,9 @@ function PromptAskCard({
         answeredQuestion && "opacity-50 [&_button:disabled]:opacity-100",
       )}
     >
+      {block.topic ? (
+        <div className="mb-1 text-body text-muted-foreground">{block.topic}</div>
+      ) : null}
       <div
         className={cn(
           "text-body-lg leading-[1.5] text-foreground",
@@ -335,34 +335,27 @@ function PromptAskCard({
           </Button>
         </form>
       ) : optionQuestion ? (
-        // Options stay in place once answered: the chosen one is marked, the rest dim.
-        <div className="mt-2.5 space-y-0.5">
-          {askActions?.map((action, index) => (
-            <OptionRow
-              key={action.id}
-              letter={askOptionLetter(index)}
-              // Only an answered card says which option was chosen; before that they are plain actions.
-              selected={answered ? chosenOption?.id === action.id : undefined}
-              disabled={answered || !canAnswer || submitting}
-              onClick={() =>
-                action.id === AGENT_IMPORT_ASK_ACTION_ID
-                  ? onOpenAgentImport?.()
-                  : void submitAnswer(action.id)
-              }
-            >
-              {pendingAction === action.id ? (
-                <Trans>Sending…</Trans>
-              ) : action.id === AGENT_IMPORT_ASK_ACTION_ID ? (
-                <Trans>Move from another assistant</Trans>
-              ) : (
-                action.label
-              )}
+        <>
+          <ChoiceQuestion
+            choices={(askActions ?? []).filter(
+              (action) => action.id !== AGENT_IMPORT_ASK_ACTION_ID,
+            )}
+            multiple={block.multiple === true}
+            other={block.other === true}
+            answer={answered ? (displayedAnswer ?? "") : undefined}
+            disabled={!canAnswer}
+            pending={submitting}
+            onSubmit={(value) => void submitAnswer(value)}
+          />
+          {!answered && askActions?.some((action) => action.id === AGENT_IMPORT_ASK_ACTION_ID) ? (
+            <OptionRow letter="+" onClick={() => onOpenAgentImport?.()}>
+              <Trans>Move from another assistant</Trans>
             </OptionRow>
-          ))}
+          ) : null}
           {answered ? (
             <span className="sr-only">{block.expired ? t`Expired` : t`Answered`}</span>
           ) : null}
-        </div>
+        </>
       ) : typedAnswer ? (
         answerIsSeparate ? null : (
           <blockquote

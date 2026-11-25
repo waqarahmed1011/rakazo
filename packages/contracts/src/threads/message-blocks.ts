@@ -176,11 +176,19 @@ export const MessageBlock = z.discriminatedUnion("kind", [
     expired: z.literal(true).optional(),
     /** A login the user used for this run only instead of saving it. */
     remembered: z.literal(false).optional(),
+    /** On a question: a short label for what is being decided, shown above it. */
+    topic: z.string().optional(),
+    /** On a question: the person may pick several options, sent together as one answer. */
+    multiple: z.literal(true).optional(),
+    /** On a question: the person may type their own answer instead of an option. */
+    other: z.literal(true).optional(),
     actions: z
       .array(
         z.object({
           id: z.string(),
           label: z.string(),
+          /** One line under an option's label: what picking it means. */
+          description: z.string().optional(),
           outcome: z.enum(["created", "cancelled"]).optional(),
         }),
       )

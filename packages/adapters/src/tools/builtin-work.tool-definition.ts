@@ -280,7 +280,7 @@ export const workTools: ConnectorTool[] = [
   {
     name: "ticket_create",
     description:
-      "Create a ticket. Owner defaults to you. Set proposed to offer work nobody asked for: it waits as a card a person approves with one tap, and nothing runs until they do.",
+      "Create a ticket. Owner defaults to you. Set proposed to offer unrequested work; it waits for a person's approval.",
     inputSchema: {
       type: "object",
       properties: {
@@ -305,8 +305,7 @@ export const workTools: ConnectorTool[] = [
         },
         proposed: {
           type: "boolean",
-          description:
-            "Offer this work instead of starting it. The title says what you will do; the description says why now.",
+          description: "Offer it instead of starting it; the description says why now.",
         },
       },
       required: ["title"],

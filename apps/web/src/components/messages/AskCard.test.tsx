@@ -376,156 +376,6 @@ it("asks for a visible username and a hidden password when the bot names no fiel
   ]);
 });
 
-it("keeps an accepted question choice answered until the block updates", async () => {
-  const block: AskBlock = {
-    kind: "ask",
-    text: "Which city?",
-    status: "pending",
-    actions: [
-      { id: "paris", label: "Paris" },
-      { id: "london", label: "London" },
-    ],
-  };
-  const onAnswer = vi.fn(async () => undefined);
-  await render(block, undefined, onAnswer);
-
-  await act(async () => button("AParis")!.click());
-
-  expect(onAnswer).toHaveBeenCalledWith("paris");
-  expect(container.querySelector(".sr-only")?.textContent).toBe("Answered");
-  expect(button("AParis")!.getAttribute("aria-pressed")).toBe("true");
-  expect(button("BLondon")!.disabled).toBe(true);
-  expect(container.querySelector(".text-destructive")).toBeNull();
-
-  await render({ ...block, status: "answered", answer: "london" });
-  expect(button("BLondon")!.getAttribute("aria-pressed")).toBe("true");
-  expect(button("AParis")!.getAttribute("aria-pressed")).toBe("false");
-});
-
-it("opens the agent import from a first bot's opening question instead of answering", async () => {
-  const block: AskBlock = {
-    kind: "ask",
-    text: "Which city?",
-    status: "pending",
-    actions: [
-      { id: "paris", label: "Paris" },
-      { id: AGENT_IMPORT_ASK_ACTION_ID, label: "Move from another assistant" },
-    ],
-  };
-  const onAnswer = vi.fn(async () => undefined);
-  const onOpenAgentImport = vi.fn();
-  const renderCard = (shown: AskBlock, opener?: () => void) =>
-    act(async () =>
-      root.render(
-        <AskCard
-          block={shown}
-          canAnswer
-          canDismiss
-          onAnswer={onAnswer}
-          onDismiss={async () => undefined}
-          onOpenAgentImport={opener}
-        />,
-      ),
-    );
-
-  await renderCard(block, onOpenAgentImport);
-  await act(async () => button("BMove from another assistant")!.click());
-  expect(onOpenAgentImport).toHaveBeenCalledOnce();
-  expect(onAnswer).not.toHaveBeenCalled();
-  expect(container.querySelector("[aria-pressed]")).toBeNull();
-
-  await renderCard({ ...block, status: "answered", answer: "paris" }, onOpenAgentImport);
-  expect(button("BMove from another assistant")).toBeUndefined();
-
-  await renderCard(block);
-  expect(button("BMove from another assistant")).toBeUndefined();
-  expect(button("AParis")).toBeDefined();
-});
-
-it("announces an answered question's state and marks only the chosen option", async () => {
-  await render({
-    kind: "ask",
-    text: "Which city?",
-    status: "answered",
-    answer: "london",
-    actions: [
-      { id: "paris", label: "Paris" },
-      { id: "london", label: "London" },
-    ],
-  });
-  expect(container.querySelector(".sr-only")?.textContent).toBe("Answered");
-  expect(button("AParis")!.getAttribute("aria-pressed")).toBe("false");
-  expect(button("BLondon")!.getAttribute("aria-pressed")).toBe("true");
-});
-
-it("announces an expired question as expired with no option chosen", async () => {
-  await render({
-    kind: "ask",
-    text: "Which city?",
-    status: "answered",
-    expired: true,
-    actions: [
-      { id: "paris", label: "Paris" },
-      { id: "london", label: "London" },
-    ],
-  });
-  expect(container.querySelector(".sr-only")?.textContent).toBe("Expired");
-  expect(button("AParis")!.getAttribute("aria-pressed")).toBe("false");
-  expect(button("BLondon")!.getAttribute("aria-pressed")).toBe("false");
-});
-
-it("leaves an unanswered question's options as plain actions", async () => {
-  await render({
-    kind: "ask",
-    text: "Which city?",
-    status: "pending",
-    actions: [
-      { id: "paris", label: "Paris" },
-      { id: "london", label: "London" },
-    ],
-  });
-  expect(container.querySelector("[aria-pressed]")).toBeNull();
-  expect(container.querySelector(".sr-only")).toBeNull();
-});
-
-it("dims a closed question's options without a status line", async () => {
-  await act(async () =>
-    root.render(
-      <AskCard
-        block={{
-          kind: "ask",
-          text: "Which city?",
-          status: "pending",
-          actions: [{ id: "paris", label: "Paris" }],
-        }}
-        canAnswer={false}
-        canDismiss={false}
-        onAnswer={async () => undefined}
-        onDismiss={async () => undefined}
-      />,
-    ),
-  );
-  expect(button("AParis")!.disabled).toBe(true);
-  expect(container.textContent).not.toContain("No longer active");
-});
-
-it("letters question options and fills them only on hover", async () => {
-  await render({
-    kind: "ask",
-    text: "Which city?",
-    status: "pending",
-    actions: [
-      { id: "paris", label: "Paris" },
-      { id: "london", label: "London" },
-    ],
-  });
-  const option = button("BLondon")!;
-  expect(option.disabled).toBe(false);
-  expect(option.classList.contains("bg-secondary")).toBe(false);
-  expect(option.classList.contains("hover:bg-accent")).toBe(true);
-  expect(option.querySelector("[aria-hidden]")?.textContent).toBe("B");
-});
-
 it("sizes approval buttons like the other card buttons", async () => {
   await render({
     kind: "ask",
@@ -604,26 +454,6 @@ it.each(["Allow in this space", "Allow for this chat"])(
     expect(container.textContent).toContain("Allowed in this space");
   },
 );
-
-it("shows a question's detail as plain text above its options", async () => {
-  await render({
-    kind: "ask",
-    text: "Send this email to Ana?",
-    detail: "To: ana@example.test\nSubject: Demo\n\nThe draft body.",
-    detailFormat: "text",
-    status: "pending",
-    actions: [
-      { id: "choice-1", label: "Send it" },
-      { id: "choice-2", label: "Show me first" },
-    ],
-  });
-  const detail = container.querySelector('[data-testid="ask-detail"]')!;
-  expect(detail.textContent).toBe("To: ana@example.test\nSubject: Demo\n\nThe draft body.");
-  // Plain text sits on the card like the question, not in a code snippet box.
-  expect(detail.classList.contains("font-sans")).toBe(true);
-  expect(detail.classList.contains("bg-background")).toBe(false);
-  expect(button("ASend it")).toBeDefined();
-});
 
 it("shows what a sign-in approval types besides the login, above its two answers", async () => {
   // The card as the server builds it for a login that asks first and types its code.
@@ -911,33 +741,6 @@ it("leaves a typed reply in its message and marks a sent draft", async () => {
   expect(container.textContent).toContain("Sent");
 });
 
-it("dims the options a typed answer did not match", async () => {
-  await render({
-    kind: "ask",
-    text: "Which city?",
-    status: "answered",
-    answer: "Paris",
-    actions: [
-      { id: "berlin", label: "Berlin" },
-      { id: "seoul", label: "Seoul" },
-    ],
-  });
-  expect(container.querySelector('[data-testid="ask-answer"]')).toBeNull();
-  expect(container.textContent).not.toContain("Paris");
-  expect(button("ABerlin")!.getAttribute("aria-pressed")).toBe("false");
-  expect(button("BSeoul")!.getAttribute("aria-pressed")).toBe("false");
-
-  await render({
-    kind: "ask",
-    text: "Which city?",
-    status: "answered",
-    answer: "seoul",
-    actions: [{ id: "seoul", label: "Seoul" }],
-  });
-  expect(container.querySelector('[data-testid="ask-answer"]')).toBeNull();
-  expect(button("ASeoul")!.getAttribute("aria-pressed")).toBe("true");
-});
-
 it("undoes a settings change from chat while it still holds", async () => {
   await render({
     kind: "ask",
@@ -1158,4 +961,59 @@ it("leaves plain questions to the composer and dims the question after answering
     container.querySelector('[data-testid="question-card"]')?.classList.contains("opacity-50"),
   ).toBe(true);
   expect(container.textContent).not.toContain("Paris");
+});
+
+const question: AskBlock = {
+  kind: "ask",
+  text: "Two places can take all 14 of us. Which do I book?",
+  topic: "Venue",
+  status: "pending",
+  other: true,
+  actions: [
+    { id: "choice-1", label: "Casa do Rio", description: "In town by the river" },
+    { id: "choice-2", label: "Quinta da Serra", description: "An hour out by coach" },
+  ],
+};
+
+function pick(label: string) {
+  const row = [...container.querySelectorAll("label")].find((item) =>
+    item.textContent?.startsWith(label),
+  );
+  return act(async () => row?.querySelector("input")?.click());
+}
+
+it("shows a question's topic and option lines, and sends the chosen option only on Submit", async () => {
+  const onAnswer = vi.fn(async () => undefined);
+  await render(question, undefined, onAnswer);
+  expect(container.textContent).toContain("Venue");
+  expect(container.textContent).toContain("An hour out by coach");
+  await pick("Quinta da Serra");
+  expect(onAnswer).not.toHaveBeenCalled();
+  await act(async () => button("Submit")?.click());
+  expect(onAnswer).toHaveBeenCalledWith("choice-2");
+});
+
+it("sends several picks together on a multiple-choice question", async () => {
+  const onAnswer = vi.fn(async () => undefined);
+  await render({ ...question, multiple: true }, undefined, onAnswer);
+  await pick("Casa do Rio");
+  await pick("Quinta da Serra");
+  await act(async () => button("Submit")?.click());
+  expect(onAnswer).toHaveBeenCalledWith("Casa do Rio; Quinta da Serra");
+});
+
+it("sends the person's own words from Something else", async () => {
+  const onAnswer = vi.fn(async () => undefined);
+  await render(question, undefined, onAnswer);
+  await pick("Something else");
+  await type("Your answer", "Somewhere near the airport");
+  await act(async () => button("Submit")?.click());
+  expect(onAnswer).toHaveBeenCalledWith("Somewhere near the airport");
+});
+
+it("marks the chosen options once answered and offers no buttons", async () => {
+  await render({ ...question, status: "answered", answer: "choice-1" });
+  const inputs = [...container.querySelectorAll<HTMLInputElement>("input")];
+  expect(inputs.map((input) => input.checked)).toEqual([true, false]);
+  expect(button("Submit")).toBeUndefined();
 });

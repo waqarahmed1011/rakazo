@@ -46,6 +46,7 @@ import {
 } from "../pi-runtime-limits.js";
 import type { RuntimeModelTarget } from "../pi-runtime-models.js";
 import { recordPiTelemetryContent, withPiTelemetrySpan } from "../usage/pi-telemetry.js";
+import { askUserChoices } from "./ask-user-choices.js";
 import { COMPUTER_MODE_TOOLS } from "./pi-runtime-computer-mode.js";
 import { parametersFor, prepareFleetArguments } from "./pi-runtime-tool-parameters.js";
 
@@ -418,6 +419,7 @@ function toAgentTool(
         return { reason: String(raw.reason ?? "I need you on the screen.") };
       }
       if (tool.name === "ask_user") {
+        // An option is a label, or a label with a one-line description.
         const options = Array.isArray(raw.options) ? raw.options.map(String) : raw.options;
         // The content the user is deciding about, shown on the card under the question;
         // redacted and capped here so recorded arguments never hold the raw value. A
@@ -432,6 +434,12 @@ function toAgentTool(
           // Keep a missing/invalid options value as-is so schema minItems can reject it;
           // coercing to [] would look like a valid empty list upstream.
           options,
+          ...(typeof raw.topic === "string" && raw.topic.trim() ? { topic: raw.topic } : {}),
+          ...(Array.isArray(raw.option_details)
+            ? { option_details: raw.option_details.map(String) }
+            : {}),
+          ...(raw.multiple === true ? { multiple: true } : {}),
+          ...(raw.allow_other === false ? { allow_other: false } : {}),
         };
       }
       if (tool.name === "request_secret") {
@@ -578,16 +586,15 @@ function toAgentTool(
                 };
               }
               if (tool.name === "ask_user") {
-                const options = Array.isArray(args.options)
-                  ? args.options.map((option) => String(option).trim())
-                  : [];
+                const choices = askUserChoices(args.options, args.option_details);
+                const options = choices.map((choice) => choice.label);
                 if (
                   options.length < 2 ||
-                  options.length > 4 ||
+                  options.length > 6 ||
                   options.some((option) => option.length === 0 || option.length > 80) ||
                   new Set(options).size !== options.length
                 ) {
-                  throw new Error("ask_user requires two to four unique, non-empty options");
+                  throw new Error("ask_user requires two to six unique, non-empty options");
                 }
                 if (typeof args.question !== "string" || args.question.trim().length === 0) {
                   // A blank question is a card nobody can answer, not a way to end quietly.
@@ -603,9 +610,15 @@ function toAgentTool(
                   ...(typeof args.detail === "string" && args.detail
                     ? { detail: args.detail }
                     : {}),
-                  actions: options.map((label, index) => ({
+                  ...(typeof args.topic === "string" && args.topic.trim()
+                    ? { topic: args.topic.trim().slice(0, 40) }
+                    : {}),
+                  ...(args.multiple === true ? { multiple: true } : {}),
+                  other: args.allow_other !== false,
+                  actions: choices.map((choice, index) => ({
                     id: `choice-${index + 1}`,
-                    label,
+                    label: choice.label,
+                    ...(choice.description ? { description: choice.description } : {}),
                   })),
                 });
                 return {

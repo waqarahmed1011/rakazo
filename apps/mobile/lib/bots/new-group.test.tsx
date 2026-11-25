@@ -384,7 +384,7 @@ it.each([false, true])("disables Next below two picks (native header: %s)", asyn
   expect(button("Next")).toBeUndefined();
   expect(button("Skip")).toBeDefined();
 });
-it("enforces ten picks with only an accessibility announcement and permits removal", async () => {
+it("enforces the pick limit with only an accessibility announcement and permits removal", async () => {
   rpc.mockResolvedValue(
     Array.from({ length: GROUP_MEMBER_MAX + 1 }, (_, i) => ({
       ...bots[0],
@@ -393,13 +393,14 @@ it("enforces ten picks with only an accessibility announcement and permits remov
     })),
   );
   await start();
+  const extra = `Bot ${GROUP_MEMBER_MAX}`;
   for (let i = 0; i < GROUP_MEMBER_MAX; i++) await click(`Bot ${i}`);
-  await click("Bot 10");
+  await click(extra);
   expect(announce).toHaveBeenCalledOnce();
-  expect(button("Remove Bot 10")).toBeUndefined();
+  expect(button(`Remove ${extra}`)).toBeUndefined();
   await click("Remove Bot 0");
-  await click("Bot 10");
-  expect(button("Remove Bot 10")).toBeDefined();
+  await click(extra);
+  expect(button(`Remove ${extra}`)).toBeDefined();
 });
 it("Skip posts the default name in pick order and routes to the group", async () => {
   await start();

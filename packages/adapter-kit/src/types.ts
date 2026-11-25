@@ -900,7 +900,13 @@ export type AgentRuntimeEvent =
       executionId?: string;
       text: string;
       detail?: string;
-      actions?: Array<{ id: string; label: string }>;
+      /** A one- or two-word label for what is being decided, shown above the question. */
+      topic?: string;
+      /** The person may pick several options. */
+      multiple?: boolean;
+      /** The person may type their own answer instead. */
+      other?: boolean;
+      actions?: Array<{ id: string; label: string; description?: string }>;
     }
   | { type: "takeover"; reason: string; executionId?: string }
   | ({

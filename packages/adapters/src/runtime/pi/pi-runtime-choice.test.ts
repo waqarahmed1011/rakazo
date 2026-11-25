@@ -113,6 +113,7 @@ describe("Pi choice asks", () => {
 
     expect(events).toContainEqual({
       type: "ask",
+      other: true,
       text: "Which city should I use?",
       actions: [
         { id: "choice-1", label: "Berlin" },
@@ -134,6 +135,7 @@ describe("Pi choice asks", () => {
 
     expect(events).toContainEqual({
       type: "ask",
+      other: true,
       text: "Which city should I use?",
       detail: "To: person@example.test\nSubject: Hello\n\nThe draft body.",
       actions: [
@@ -163,7 +165,7 @@ describe("Pi choice asks", () => {
 
     await expect(async () => {
       for await (const event of runtime.run(runRequest, runContext)) events.push(event);
-    }).rejects.toThrow("ask_user requires two to four unique, non-empty options");
+    }).rejects.toThrow("ask_user requires two to six unique, non-empty options");
     expect(events.some((event) => event.type === "ask")).toBe(false);
   });
 });

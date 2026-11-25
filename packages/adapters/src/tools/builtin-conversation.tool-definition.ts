@@ -116,19 +116,28 @@ export const conversationTools: ConnectorTool[] = [
   {
     name: "ask_user",
     description:
-      "Ask the user one short multiple-choice question with tappable options, then wait for their selection. Use this instead of asking them to type when two to four concise choices are enough. Put the content the user is deciding about, such as a draft email, in `detail`.",
+      "Ask one short multiple-choice question and wait. Give the facts in the question; topic is 1-2 words; put a draft being decided in detail; set multiple if several apply.",
     inputSchema: {
       type: "object",
       properties: {
+        topic: { type: "string", maxLength: 40 },
         question: { type: "string", maxLength: 240 },
         detail: { type: "string", maxLength: 4_000 },
         options: {
           type: "array",
           items: { type: "string", minLength: 1, maxLength: 80 },
           minItems: 2,
-          maxItems: 4,
+          maxItems: 6,
           uniqueItems: true,
         },
+        option_details: {
+          type: "array",
+          items: { type: "string", maxLength: 120 },
+          maxItems: 6,
+          description: "Per option, same order: what choosing it means.",
+        },
+        multiple: { type: "boolean" },
+        allow_other: { type: "boolean" },
       },
       required: ["question", "options"],
     },

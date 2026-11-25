@@ -33,6 +33,7 @@ export async function pauseForAnswer(ctx: RunContext, event: RuntimeEvent<"ask">
   const safeActions = event.actions?.map((action) => ({
     id: action.id,
     label: redactSecrets(action.label, ctx.secrets),
+    ...(action.description ? { description: redactSecrets(action.description, ctx.secrets) } : {}),
   }));
   await ctx.computer.checkpoint.flush();
   await persistTurnCheckpoint(ctx, event.executionId);
@@ -54,6 +55,9 @@ export async function pauseForAnswer(ctx: RunContext, event: RuntimeEvent<"ask">
         // A runtime ask's detail is prose the bot wrote, never tool arguments.
         ...(safeDetail ? { detailFormat: "text" as const } : {}),
         status: "pending",
+        ...(event.topic ? { topic: redactSecrets(event.topic, ctx.secrets) } : {}),
+        ...(event.multiple ? { multiple: true as const } : {}),
+        ...(event.other ? { other: true as const } : {}),
         actions: (await isFirstBotOpening(ctx))
           ? [...(safeActions ?? []), IMPORT_ACTION]
           : safeActions,
