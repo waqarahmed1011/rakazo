@@ -156,7 +156,7 @@ export function ActivityList({
         <p className="px-2.5 py-2 text-body-sm text-muted-foreground/80" role="status">
           <Trans>No runs match these filters.</Trans>
         </p>
-      ) : !error && !hasAnyRuns && unreadCount === 0 && groups.length === 0 ? (
+      ) : !error && !hasAnyRuns && unreadCount === 0 ? (
         <p className="px-2.5 py-2 text-body-sm text-muted-foreground/80" role="status">
           <Trans>No runs yet</Trans>
         </p>
@@ -208,20 +208,6 @@ export function ActivityList({
       {recentRows.length > 0 ? (
         <ActivitySection {...section("recent", t`Recent`, recentRows.length, true)}>
           {runRows(recentRows, true)}
-        </ActivitySection>
-      ) : null}
-      {groups.length > 0 ? (
-        <ActivitySection {...section("groups", t`Group chats`, groups.length, true)}>
-          {groups.map((group) => (
-            <ChatRow
-              key={group.id}
-              avatar={<GroupAvatar members={group.members} size={28} />}
-              name={group.name}
-              preview={group.preview}
-              updatedAt={group.updatedAt}
-              onOpen={() => onOpenGroup(group)}
-            />
-          ))}
         </ActivitySection>
       ) : null}
     </div>

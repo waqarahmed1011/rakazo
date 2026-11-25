@@ -116,6 +116,7 @@ vi.mock("@rakazo/ui-web", async (importOriginal) => {
   };
 });
 vi.mock("../../../components/pages/PagesList", () => ({ PagesList: () => null }));
+vi.mock("./bot-tags", () => ({ BotTagsSection: () => null }));
 vi.mock("./avatar-studio-popover", () => ({
   AvatarStudioPopover: ({
     value,

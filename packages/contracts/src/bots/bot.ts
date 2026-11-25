@@ -48,6 +48,8 @@ export const BotSchema = z.object({
   /** Sidebar order, in the same sequence as group chats' positions. */
   position: z.number().int().nonnegative().optional(),
   sectionId: Id.nullable(),
+  /** Team labels; each one with two or more bots has its own group chat. */
+  tags: z.array(z.string()).optional(),
   archivedAt: z.string().nullable(),
   unread: z.boolean(),
   /** Hidden from the viewer's chat list until then; past, the chat has just woken. */
@@ -126,6 +128,15 @@ export const ReorderChatsInput = z.object({
     ),
 });
 export type ReorderChatsInput = z.infer<typeof ReorderChatsInput>;
+
+export const BOT_TAG_MAX_LENGTH = 40;
+export const BOT_TAGS_MAX = 10;
+
+export const SetBotTagsInput = z.object({
+  botId: Id,
+  tags: z.array(z.string().trim().min(1).max(BOT_TAG_MAX_LENGTH)).max(BOT_TAGS_MAX),
+});
+export type SetBotTagsInput = z.infer<typeof SetBotTagsInput>;
 
 export const BOT_SECTION_NAME_MAX_LENGTH = 60;
 export const BotSectionName = z.string().trim().min(1).max(BOT_SECTION_NAME_MAX_LENGTH);

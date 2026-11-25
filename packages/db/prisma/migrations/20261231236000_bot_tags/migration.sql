@@ -1,0 +1,2 @@
+ALTER TABLE "bots" ADD COLUMN "tags" TEXT[] DEFAULT ARRAY[]::TEXT[];
+ALTER TABLE "chat_groups" ADD COLUMN "tagKey" TEXT;

@@ -155,7 +155,7 @@ async function assertSpaceBots(
  * timestamp, so ties would come back in whatever order Postgres happens to return them:
  * one millisecond per member keeps the caller's order authoritative.
  */
-function memberRowsInOrder(groupId: string, botIds: string[], base = Date.now()) {
+export function memberRowsInOrder(groupId: string, botIds: string[], base = Date.now()) {
   return botIds.map((botId, index) => ({
     groupId,
     botId,

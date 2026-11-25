@@ -15,7 +15,7 @@ import {
   initialBotMemory,
   resolveBotAvatarSet,
 } from "@rakazo/contracts";
-import { displayName, phoneCallSettings, ringingCall } from "@rakazo/core";
+import { displayName, normalizeBotTags, phoneCallSettings, ringingCall } from "@rakazo/core";
 import type { ComputerMode } from "../computers/computers.js";
 import {
   ensureComputerRecord,
@@ -108,6 +108,7 @@ function mapBot(
     disabledBuiltinTools?: string[];
     webhookSecretId?: string | null;
     spawnKey?: string | null;
+    tags?: string[];
   },
   preview = "",
   status = "idle",
@@ -131,6 +132,7 @@ function mapBot(
     pinned: bot.pinned,
     ...(bot.position === undefined ? {} : { position: bot.position }),
     sectionId: bot.sectionId,
+    ...(bot.tags ? { tags: bot.tags } : {}),
     archivedAt: bot.archivedAt?.toISOString() ?? null,
     unread: unreadFor(bot.thread),
     snoozedUntil: snoozedUntilFor(bot.thread),
@@ -206,6 +208,7 @@ export function createRepos(
         notifyOnFinish: true,
         pinned: true,
         sectionId: true,
+        tags: true,
         position: true,
         updatedAt: true,
         parentBotId: true,
@@ -703,8 +706,9 @@ export function createRepos(
             where: { spaceId: actor.spaceId, archivedAt: null },
             select: { id: true },
           }),
+          // Group chats are each person's own; only theirs are in their list.
           tx.chatGroup.findMany({
-            where: { spaceId: actor.spaceId, archivedAt: null },
+            where: { spaceId: actor.spaceId, userId: actor.userId, archivedAt: null },
             select: { id: true },
           }),
         ]);
@@ -726,6 +730,15 @@ export function createRepos(
           ),
         );
       });
+    },
+
+    /** Replaces a bot's tags; the caller then brings the tag group chats in step. */
+    async setTags(actor: Actor, botId: string, tags: string[]): Promise<void> {
+      const { count } = await prisma.bot.updateMany({
+        where: { id: botId, spaceId: actor.spaceId, archivedAt: null },
+        data: { tags: normalizeBotTags(tags) },
+      });
+      if (count === 0) throw new IsolationError();
     },
 
     async setBotComputer(actor: Actor, botId: string, mode: ComputerMode): Promise<Bot> {

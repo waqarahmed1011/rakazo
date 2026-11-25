@@ -352,6 +352,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["bots/createFromTemplate", { templateId: "morning-briefing", version: 1 }],
       ["bots/reorder"],
       ["bots/reorderChats", { chats: [] }],
+      ["bots/setTags", { botId: "missing-bot", tags: [] }],
       ["bots/restoreInstructions"],
       ["bots/setComputer"],
       ["bots/rotateWebhookSecret"],

@@ -27,6 +27,7 @@ import {
   ListedBotSchema,
   ReorderBotsInput,
   ReorderChatsInput,
+  SetBotTagsInput,
   UpdateBotInput,
 } from "./bot.js";
 import { BotEmailAddressesSchema, BotEmailAddressSchema, BotEmailNameSchema } from "./bot-email.js";
@@ -67,6 +68,7 @@ export const botsRpc = {
     duplicate: oc.input(botId).output(BotSchema),
     reorder: oc.input(ReorderBotsInput).output(z.object({ ok: z.literal(true) })),
     reorderChats: oc.input(ReorderChatsInput).output(z.object({ ok: z.literal(true) })),
+    setTags: oc.input(SetBotTagsInput).output(z.object({ ok: z.literal(true) })),
     update: oc.input(UpdateBotInput).output(BotSchema),
     restoreInstructions: oc
       .input(

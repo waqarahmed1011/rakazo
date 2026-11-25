@@ -41,6 +41,7 @@ import {
   ToolsGroup,
   VoiceRow,
 } from "./bot-settings-sections";
+import { BotTagsSection } from "./bot-tags";
 import { InstructionSettings } from "./instruction-settings";
 
 const ScratchpadSection = lazyComponent(() =>
@@ -594,6 +595,7 @@ export function BotSettings({
           ) : null}
         </div>
         <div className="space-y-6">
+          <BotTagsSection bot={bot} />
           {computer ? (
             <PanelSection label={<Trans>Computer</Trans>}>{computer}</PanelSection>
           ) : null}

@@ -57,6 +57,7 @@ import {
   recordSecurityEvent,
   restoreBotUnderComputerQuota,
   settingsTarget,
+  syncTagGroups,
   THREAD_LOCK_TRANSACTION_OPTIONS,
 } from "@rakazo/db";
 import { getLogger } from "@rakazo/logging";
@@ -419,6 +420,11 @@ export function botsRoutes(ctx: RouterContext) {
       }),
       reorderChats: authed.bots.reorderChats.handler(async ({ context, input }) => {
         await repos.reorderChats(context.actor, input.chats);
+        return { ok: true as const };
+      }),
+      setTags: authed.bots.setTags.handler(async ({ context, input }) => {
+        await repos.setTags(context.actor, input.botId, input.tags);
+        await syncTagGroups(deps.prisma, context.actor.spaceId);
         return { ok: true as const };
       }),
       update: authed.bots.update.handler(async ({ context, input }) => {

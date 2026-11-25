@@ -57,6 +57,7 @@ import {
   deviceChatPreferences,
   useChatPreferences,
 } from "../../lib/preferences/chat-preferences";
+import { chatSortPreference } from "../../lib/preferences/chat-sort-pref";
 import { remoteImagesPreference } from "../../lib/preferences/remote-images-preference";
 import type { AppearancePreference } from "../../lib/preferences/ui-appearance";
 import { getUiAppearancePreference, setUiAppearance } from "../../lib/preferences/ui-appearance";
@@ -136,6 +137,8 @@ export function GeneralSettingsPanels({
   );
   const sidebarDensity = botsSidebarDensityPreference.use();
   const sidebarDensityLabelId = useId();
+  const chatSortLabelId = useId();
+  const chatSort = chatSortPreference.use();
   const botStyleLabelId = useId();
   const [botStyleError, setBotStyleError] = useState<string | null>(null);
   const streamRepliesId = useId();
@@ -397,6 +400,26 @@ export function GeneralSettingsPanels({
                 <Trans>Compact</Trans>
               </ToggleGroupItem>
             </ToggleGroup>
+          }
+        />
+        <SettingsRow
+          label={
+            <span id={chatSortLabelId}>
+              <Trans>Sort chats by</Trans>
+            </span>
+          }
+          control={
+            <OptionSelect
+              aria-labelledby={chatSortLabelId}
+              value={chatSort}
+              options={[
+                { value: "color", label: t`Color` },
+                { value: "recent", label: t`Recent` },
+                { value: "name", label: t`Name` },
+                { value: "custom", label: t`Your order` },
+              ]}
+              onValueChange={(next) => chatSortPreference.set(next)}
+            />
           }
         />
         <SettingsRow

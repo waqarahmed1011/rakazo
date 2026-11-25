@@ -33,6 +33,8 @@ export const GroupSchema = z.object({
   position: z.number().int().nonnegative().optional(),
   /** The member a message naming nobody goes to; null means the first member. */
   leadBotId: Id.nullable().optional(),
+  /** The bot tag this group follows; its members change with the tag. */
+  tagKey: z.string().nullable().optional(),
   archivedAt: z.string().nullable(),
   members: z.array(GroupMemberSchema),
   threadId: Id,

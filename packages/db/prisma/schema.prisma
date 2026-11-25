@@ -1066,6 +1066,8 @@ model Bot {
   pinned            Boolean           @default(false)
   position          Int               @default(0)
   sectionId         String?
+  /// Team labels shared by everyone in the space; each label with two or more bots gets a group chat.
+  tags              String[]          @default([])
   section           BotSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   archivedAt        DateTime?
   parentBotId       String?
@@ -1171,6 +1173,8 @@ model ChatGroup {
   position   Int               @default(0)
   /// The member that messages naming nobody go to; the first member when unset or no longer in it.
   leadBotId  String?
+  /// Set on the group chat kept in step with a bot tag: the tag's lowercase key.
+  tagKey     String?
   archivedAt DateTime?
   createdAt  DateTime          @default(now())
   updatedAt  DateTime          @updatedAt

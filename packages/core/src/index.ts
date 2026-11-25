@@ -33,6 +33,8 @@ export * from "./bots/bot-messages.js";
 export * from "./bots/bot-messages.prompt.js";
 export * from "./bots/bot-model.js";
 export * from "./bots/bot-sections.js";
+export * from "./bots/bot-tags.js";
+export * from "./bots/chat-arrangement.js";
 export * from "./bots/bot-sender-name.js";
 export * from "./bots/bot-templates.js";
 export * from "./bots/display-name.js";

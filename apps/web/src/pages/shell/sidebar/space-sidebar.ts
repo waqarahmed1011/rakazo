@@ -1,4 +1,12 @@
-import { chatSnoozed, chatWoke, groupBotsForSidebar, sortChats } from "@rakazo/core";
+import type { ChatSort } from "@rakazo/core";
+import {
+  chatSnoozed,
+  chatWoke,
+  groupBotsForSidebar,
+  sortChatItems,
+  sortChats,
+  tagSections,
+} from "@rakazo/core";
 
 type SidebarChat = {
   id: string;
@@ -8,7 +16,13 @@ type SidebarChat = {
   sectionId: string | null;
   snoozedUntil?: string | null;
   position?: number;
+  color?: string;
+  tags?: readonly string[];
+  updatedAt?: string;
 };
+
+/** Sidebar order and the titles of the sections tags make. */
+export type ChatArrangement = { sort: ChatSort; groupChats: string; untagged: string };
 
 type SidebarSpace<TBot extends SidebarChat, TGroup extends SidebarChat> = {
   id: string;
@@ -37,6 +51,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   query: string,
   labels?: { pinned: string; unassigned: string },
   now = Date.now(),
+  arrange?: ChatArrangement,
 ) {
   const needle = query.toLowerCase();
   const showSpaceNames = spaces.length > 1;
@@ -48,7 +63,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
   return spaces.flatMap((space) => {
     const visibleBots = space.bots.filter(listed);
     const visibleGroups = space.groups.filter(listed);
-    const grouped = groupBotsForSidebar(
+    const items = sortChatItems(
       sortChats([
         ...visibleBots.map((chat) => ({ kind: "bot" as const, chat, position: chat.position })),
         ...visibleGroups.map((chat) => ({
@@ -63,12 +78,35 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         sectionId: item.chat.sectionId,
         woke: chatWoke(item.chat, now),
       })),
-      space.botSections,
-      { labels },
+      arrange?.sort ?? "custom",
     );
+    // Once any bot has a tag, the list is by tag: group chats, each tag, then the rest.
+    const byTags =
+      Boolean(arrange) && !needle && space.bots.some((bot) => (bot.tags?.length ?? 0) > 0);
+    const pinned = items.filter((item) => item.pinned);
+    const grouped = byTags
+      ? [
+          ...(pinned.length > 0
+            ? [{ key: "pinned", title: labels?.pinned ?? "Pinned", bots: pinned }]
+            : []),
+          ...tagSections(
+            items.filter((item) => !item.pinned),
+            arrange?.sort ?? "custom",
+          ).map((section) => ({
+            key: section.key,
+            title:
+              section.key === "groups"
+                ? (arrange?.groupChats ?? null)
+                : section.key === "untagged"
+                  ? (arrange?.untagged ?? null)
+                  : section.tag,
+            bots: section.bots,
+          })),
+        ]
+      : groupBotsForSidebar(items, space.botSections, { labels });
     // Keep destinations visible after their last bot is dragged out. Search
     // still hides empty lists, and spaces without sections keep their old layout.
-    if (!needle && space.botSections.length > 0 && grouped.length > 0) {
+    if (!byTags && !needle && space.botSections.length > 0 && grouped.length > 0) {
       for (const section of space.botSections) {
         const key = `section:${section.id}`;
         if (!grouped.some((group) => group.key === key)) {
@@ -88,7 +126,8 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
     // Pinned chats show as tiles under no heading of their own, so without saved sections the
     // list after them is simply the Space's.
     const headed = grouped.map((group) =>
-      group.key === "pinned" || (group.key === "unassigned" && space.botSections.length === 0)
+      group.key === "pinned" ||
+      (!byTags && group.key === "unassigned" && space.botSections.length === 0)
         ? { ...group, title: null }
         : group,
     );

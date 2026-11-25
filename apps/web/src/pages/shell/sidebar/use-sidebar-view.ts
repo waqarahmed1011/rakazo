@@ -7,6 +7,7 @@ import {
   readBotsSidebarCollapsed,
   writeBotsSidebarCollapsed,
 } from "../../../lib/preferences/bots-sidebar-pref";
+import { chatSortPreference } from "../../../lib/preferences/chat-sort-pref";
 import type { SnoozedChat } from "./snoozed-chats";
 import { countUnreadChats, sidebarGroupsForSpaces } from "./space-sidebar";
 
@@ -72,6 +73,7 @@ export function useSidebarView({
           : [],
     [bootstrapMe, botSections, bots, groups, spaces],
   );
+  const sort = chatSortPreference.use();
   const sidebarGroups = useMemo(
     () =>
       sidebarGroupsForSpaces(
@@ -79,8 +81,9 @@ export function useSidebarView({
         mini ? "" : searchQuery,
         { pinned: t`Pinned`, unassigned: t`Unassigned` },
         now,
+        { sort, groupChats: t`Group chats`, untagged: t`Other` },
       ),
-    [sidebarSpaces, searchQuery, mini, t, now],
+    [sidebarSpaces, searchQuery, mini, t, now, sort],
   );
   // The Dock badge ignores the roster search box: a filter must not hide unread chats.
   const unreadChatCount = useMemo(

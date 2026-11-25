@@ -85,9 +85,7 @@ export function AppOverlays({
           }
         />
       ) : null}
-      {overlay?.kind === "overview" ? (
-        <OverviewDialog onClose={() => setOverlay(null)} />
-      ) : null}
+      {overlay?.kind === "overview" ? <OverviewDialog onClose={() => setOverlay(null)} /> : null}
       {overlay?.kind === "skills" ? (
         <SkillsDialog onClose={() => setOverlay(null)} onOpenTemplates={openTemplates} />
       ) : null}
