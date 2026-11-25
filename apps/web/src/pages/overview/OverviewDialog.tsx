@@ -422,8 +422,9 @@ function RunsToday({
                 </div>
               ))}
               {latest.map((run) => (
-                <div key={run.runId} className="truncate text-body-sm text-muted-foreground">
-                  {formatRelativeTime(run.updatedAt)} · {run.promptSnippet}
+                <div key={run.runId} className="flex gap-2 text-body-sm text-muted-foreground">
+                  <span className="min-w-0 flex-1 truncate">{run.promptSnippet}</span>
+                  <span className="shrink-0">{formatRelativeTime(run.updatedAt)}</span>
                 </div>
               ))}
             </div>
