@@ -3,12 +3,14 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it, vi } from "vitest";
+import { indexPageMiddleware } from "./index-page";
 import {
+  instanceIdentity,
   instanceManifest,
-  instanceThemeIndexMiddleware,
   instanceThemeMiddleware,
   parseInstanceTheme,
   renderInstanceThemeCss,
+  withInstanceThemeLink,
 } from "./instance-theme";
 
 const dir = path.resolve("/srv/theme");
@@ -107,7 +109,7 @@ describe("instance theme", () => {
   it("links the theme only on the pages the SPA fallback resolves to the app", () => {
     const folder = mkdtempSync(path.join(tmpdir(), "rakazo-dist-"));
     writeFileSync(path.join(folder, "index.html"), "<html><head><title>x</title></head></html>");
-    const middleware = instanceThemeIndexMiddleware(folder);
+    const middleware = indexPageMiddleware(folder, withInstanceThemeLink);
     const page = (url: string, headers: Record<string, string> = {}) => {
       const res = { setHeader: vi.fn(), end: vi.fn() };
       const next = vi.fn();
@@ -170,7 +172,7 @@ describe("instance theme", () => {
     );
     const file = themeFolder({ name: " JBW ", icon: "logo.png" }, { "logo.png": "png-bytes" });
     const res = { setHeader: vi.fn(), end: vi.fn() };
-    instanceThemeIndexMiddleware(folder, file)(
+    indexPageMiddleware(folder, (html) => withInstanceThemeLink(html, instanceIdentity(file)))(
       { url: "/index.html", method: "GET", headers: {} } as unknown as IncomingMessage,
       res as unknown as ServerResponse,
       vi.fn(),
@@ -197,5 +199,25 @@ describe("instance theme", () => {
     expect(serve(file, "/site.webmanifest").next).toHaveBeenCalled();
     expect(serve(file, "/instance-theme/icon.png").next).toHaveBeenCalled();
     expect(JSON.parse(instanceManifest({})).name).toBe("Rakazo");
+  });
+
+  it("serves an edited theme without a restart, from one middleware instance", () => {
+    const file = themeFolder({ dark: { background: "#101418" } });
+    const warn = vi.fn();
+    const middleware = instanceThemeMiddleware(file, warn);
+    const run = (url: string) => {
+      const res = { setHeader: vi.fn(), end: vi.fn() };
+      const next = vi.fn();
+      middleware({ url } as IncomingMessage, res as unknown as ServerResponse, next);
+      return res;
+    };
+    expect(run("/instance-theme.css").end.mock.calls[0]?.[0]).toContain("--background: #101418;");
+    // A different size, so the edit is never mistaken for the same file.
+    writeFileSync(
+      file,
+      JSON.stringify({ dark: { background: "#101418" }, light: { primary: "#00AA00" } }),
+    );
+    expect(run("/instance-theme.css").end.mock.calls[0]?.[0]).toContain("--primary: #00AA00;");
+    expect(warn).not.toHaveBeenCalled();
   });
 });

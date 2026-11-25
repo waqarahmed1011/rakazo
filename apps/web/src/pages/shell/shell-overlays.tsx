@@ -49,17 +49,6 @@ const McpServersOverlay = lazyOverlay(() =>
   import("../integrations/McpServersOverlay").then((module) => module.McpServersOverlay),
 );
 
-/** Bound Settings leave so a hung voice status refresh cannot block dismissal. */
-const VOICE_STATUS_REFRESH_TIMEOUT_MS = 10_000;
-
-function voiceStatusRefreshTimeout(): Promise<never> {
-  return new Promise((_, reject) => {
-    AbortSignal.timeout(VOICE_STATUS_REFRESH_TIMEOUT_MS).addEventListener("abort", () => {
-      reject(new DOMException("Voice status refresh timed out", "TimeoutError"));
-    });
-  });
-}
-
 /** The integrations, skills, bot templates, import and MCP overlays the URL opens. */
 export function AppOverlays({
   overlay,
@@ -69,9 +58,7 @@ export function AppOverlays({
   messagingEnabled,
   onConnectedAppsChange,
   onOpenBot,
-  boardEnabled,
 }: {
-  boardEnabled: boolean;
   overlay: ShellOverlay;
   setOverlay: (next: ShellOverlay) => void;
   activeBotId: string | undefined;
@@ -99,7 +86,7 @@ export function AppOverlays({
         />
       ) : null}
       {overlay?.kind === "overview" ? (
-        <OverviewDialog boardEnabled={boardEnabled} onClose={() => setOverlay(null)} />
+        <OverviewDialog onClose={() => setOverlay(null)} />
       ) : null}
       {overlay?.kind === "skills" ? (
         <SkillsDialog onClose={() => setOverlay(null)} onOpenTemplates={openTemplates} />
@@ -157,6 +144,7 @@ export function SettingsOverlays({
   setPeerConversation,
   active,
   peerBot,
+  openNewSpace,
 }: {
   rpc: ReturnType<typeof createSpaceRpc>;
   queries: SpaceQueries;
@@ -180,6 +168,7 @@ export function SettingsOverlays({
   setPeerConversation: (peer: null) => void;
   active: Bot | undefined;
   peerBot: (botId: string) => { color: string; avatarSet?: BotAvatarSet } | undefined;
+  openNewSpace: () => void;
 }) {
   const voiceStatusKey = queries.voice.status.queryKey();
   return (
@@ -199,6 +188,10 @@ export function SettingsOverlays({
             void leftSpace(spaceId, activeSpaceId);
           }}
           onOpenSpace={(spaceId) => setOverlay({ ...overlay, section: "space", spaceId })}
+          onNewSpace={() => {
+            setOverlay(null);
+            openNewSpace();
+          }}
           name={user?.name ?? ""}
           onNameSaved={async () => {
             await refetchSession();
@@ -259,10 +252,7 @@ export function SettingsOverlays({
           onVoiceStatusMaybeChanged={async () => {
             invalidateVoiceConsent();
             try {
-              queryClient.setQueryData(
-                voiceStatusKey,
-                await Promise.race([rpc.voice.status(), voiceStatusRefreshTimeout()]),
-              );
+              queryClient.setQueryData(voiceStatusKey, await rpc.voice.status());
             } catch {
               // Prefer reopening Voice settings over starting a call with stale readiness.
               void queryClient.resetQueries({ queryKey: voiceStatusKey });

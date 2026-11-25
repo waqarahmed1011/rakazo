@@ -1,4 +1,4 @@
-import { readFileSync, realpathSync } from "node:fs";
+import { readFileSync, realpathSync, statSync } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import path from "node:path";
 import type { ResolvedAppearance, WebColorTokens } from "@rakazo/ui-tokens";
@@ -203,11 +203,8 @@ export function withInstanceThemeLink(html: string, identity: Identity = {}): st
 }
 
 /**
- * The built page with the theme linked, for `vite preview`. Runs after Vite's SPA fallback has
- * rewritten the request to `/index.html`, so it answers exactly the requests that get the app.
- * The theme file is re-read per page, like the stylesheet, so a renamed instance shows on reload.
+ * The theme's name and icon, or none when the file is missing or invalid.
  */
-/** The theme's name and icon, or none when the file is missing or invalid. */
 export function instanceIdentity(
   themeFile: string | undefined,
   warn: (reason: string) => void = () => {},
@@ -219,23 +216,6 @@ export function instanceIdentity(
     warn(error instanceof Error ? error.message : String(error));
     return {};
   }
-}
-
-export function instanceThemeIndexMiddleware(
-  outDir: string,
-  themeFile?: string,
-  warn: (reason: string) => void = () => {},
-) {
-  const built = readFileSync(path.join(outDir, "index.html"), "utf8");
-  return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
-    if (req.url?.split("?", 1)[0] !== "/index.html" || req.headers["sec-fetch-dest"] === "script") {
-      return next();
-    }
-    const identity = instanceIdentity(themeFile, warn);
-    res.setHeader("content-type", "text/html; charset=utf-8");
-    res.setHeader("cache-control", "no-cache");
-    res.end(req.method === "HEAD" ? undefined : withInstanceThemeLink(built, identity));
-  };
 }
 
 /** The installed app's manifest with the instance's name and icon in place of the defaults. */
@@ -261,10 +241,24 @@ function loadTheme(file: string): InstanceTheme {
 }
 
 /**
- * Serves `RAKAZO_THEME`'s stylesheet and font files. The file is re-read per request so a
- * self-hoster sees edits on reload; a bad file is logged and serves nothing.
+ * Serves `RAKAZO_THEME`'s stylesheet and font files. The file is re-read when it changes, so a
+ * self-hoster sees edits on reload; an unchanged file is parsed once, and a bad file is logged
+ * and serves nothing.
  */
 export function instanceThemeMiddleware(themeFile: string, warn: (reason: string) => void) {
+  let parsed: { stamp: string; theme: InstanceTheme } | undefined;
+  const loadTheme = (): InstanceTheme => {
+    // ctime changes on every write or replace and, unlike mtime, cannot be set back by a copy.
+    const stat = statSync(themeFile);
+    const stamp = `${stat.size}:${stat.ctimeMs}`;
+    if (parsed?.stamp === stamp) return parsed.theme;
+    const theme = parseInstanceTheme(
+      readFileSync(themeFile, "utf8"),
+      path.dirname(path.resolve(themeFile)),
+    );
+    parsed = { stamp, theme };
+    return theme;
+  };
   return (req: IncomingMessage, res: ServerResponse, next: () => void) => {
     const pathname = req.url?.split("?", 1)[0] ?? "";
     if (pathname === INSTANCE_THEME_PATH) {
@@ -272,7 +266,7 @@ export function instanceThemeMiddleware(themeFile: string, warn: (reason: string
       res.setHeader("cache-control", "no-cache");
       let css = "";
       try {
-        css = renderInstanceThemeCss(loadTheme(themeFile));
+        css = renderInstanceThemeCss(loadTheme());
       } catch (error) {
         warn(error instanceof Error ? error.message : String(error));
       }
@@ -281,7 +275,7 @@ export function instanceThemeMiddleware(themeFile: string, warn: (reason: string
     }
     if (pathname === MANIFEST_PATH || pathname === INSTANCE_ICON_PATH) {
       try {
-        const theme = loadTheme(themeFile);
+        const theme = loadTheme();
         if (pathname === MANIFEST_PATH) {
           if (!theme.name && !theme.icon) return next();
           res.setHeader("content-type", "application/manifest+json");
@@ -307,7 +301,7 @@ export function instanceThemeMiddleware(themeFile: string, warn: (reason: string
     // Only indexes into the theme's own list are served, never a path from the URL.
     const index = Number.parseInt(pathname.slice(FONT_PATH.length), 10);
     try {
-      const font = loadTheme(themeFile).fonts.files[index];
+      const font = loadTheme().fonts.files[index];
       if (!font) return next();
       // A symlink in the theme folder must not reach outside it either.
       const themeDir = realpathSync(path.dirname(path.resolve(themeFile)));

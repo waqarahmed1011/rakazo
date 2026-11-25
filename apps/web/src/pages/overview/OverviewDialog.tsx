@@ -1,6 +1,6 @@
 import { Trans, useLingui } from "@lingui/react/macro";
 import type { Bot, RunActivityRow } from "@rakazo/contracts";
-import { TICKET_STATUSES } from "@rakazo/contracts";
+import { hasLab, TICKET_STATUSES } from "@rakazo/contracts";
 import {
   BotAvatar,
   Button,
@@ -27,16 +27,11 @@ const NO_BOTS: Bot[] = [];
 const live = { refetchOnWindowFocus: "always" } as const;
 
 /** Every bot in the space at a glance: what needs a person, what is running, teams and today. */
-export function OverviewDialog({
-  boardEnabled,
-  onClose,
-}: {
-  boardEnabled: boolean;
-  onClose: () => void;
-}) {
+export function OverviewDialog({ onClose }: { onClose: () => void }) {
   const { t } = useLingui();
   const navigate = useNavigate();
   const queries = useSpaceQueries();
+  const boardEnabled = hasLab(useQuery(queries.me.queryOptions()).data?.labs, "board");
   const navigation = useQuery(queries.spaces.list.queryOptions(live));
   const active = useQuery(queries.runs.list.queryOptions({ input: { filter: "active" }, ...live }));
   const recent = useQuery(queries.runs.list.queryOptions({ input: { filter: "recent" }, ...live }));

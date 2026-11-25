@@ -4,9 +4,9 @@ import { Button } from "@rakazo/ui-web";
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MCP_OAUTH_CHANNEL } from "../../lib/integrations/mcp-connect";
+import { instanceName } from "../../lib/platform/instance-identity";
 import { rpc } from "../../lib/query/rpc";
 import { errorText } from "../../lib/query/user-error";
-import { instanceName } from "../../lib/platform/instance-identity";
 
 const appName = instanceName();
 

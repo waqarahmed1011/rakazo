@@ -8,7 +8,12 @@ import type {
   SettingsScope,
   ThinkingLevel,
 } from "@rakazo/contracts";
-import { connectedBackupOptions, MAX_MODEL_BACKUPS, modelRoleChoiceKey } from "@rakazo/contracts";
+import {
+  connectedBackupOptions,
+  MAX_MODEL_BACKUPS,
+  modelConnectionNames,
+  modelRoleChoiceKey,
+} from "@rakazo/contracts";
 import {
   catalogEntryFor,
   connectionForModelChoice,
@@ -16,7 +21,10 @@ import {
   modelRoleListPatch,
   modelSettingsEditable,
   modelThinkingLevels,
+  sameModelRoleChoice,
 } from "@rakazo/core";
+import { localizeModelEntry } from "@rakazo/i18n/model-provider";
+import { thinkingLevelLabel } from "@rakazo/i18n/thinking-level";
 import {
   Button,
   DropdownMenu,
@@ -35,12 +43,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { GripVertical, MoreHorizontal, Plus } from "lucide-react";
 import type { ReactNode } from "react";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
-import { thinkingLevelLabel } from "../../lib/models/model-catalog";
 import { instanceName } from "../../lib/platform/instance-identity";
 import { spaceQueries } from "../../lib/query/query";
 import { useSpaceRpc } from "../../lib/query/space-rpc";
 import type { ConnectableProvider, RoleModelOption } from "./role-model-picker";
-import { RoleModelPicker } from "./role-model-picker";
+import { RoleModelPicker, rolePickerTrigger } from "./role-model-picker";
 
 const appName = instanceName();
 
@@ -87,9 +94,6 @@ const emptyDragImage = () => {
   });
   return blankImage;
 };
-
-const sameChoice = (left: ModelRoleChoice, right: ModelRoleChoice) =>
-  modelRoleChoiceKey(left) === modelRoleChoiceKey(right);
 
 const choiceOf = (option: RoleModelOption): ModelRoleChoice => ({
   provider: option.provider,
@@ -198,7 +202,7 @@ export function ModelRoleSettings({
     catalogEntryFor(state.catalog, choice.provider, choice.modelId);
   // Grouped by the connection that runs them.
   const options: RoleModelOption[] = connectedBackupOptions(
-    state.catalog,
+    state.catalog.map(localizeModelEntry),
     credentials,
     role === "computer",
   ).map((choice) => ({
@@ -209,11 +213,7 @@ export function ModelRoleSettings({
       billing: "",
     }),
     creditOfferingId: choice.creditOfferingId,
-    providerName: choice.creditOfferingId
-      ? t`${appName} credits`
-      : choice.credentialId
-        ? choice.connectionName
-        : providerLabel(choice.provider),
+    providerName: choice.creditOfferingId ? t`${appName} credits` : choice.connectionName,
     ...(choice.credentialId ? { credentialId: choice.credentialId } : {}),
   }));
   // A pinned row runs on its connection; others on the provider's newest.
@@ -224,11 +224,17 @@ export function ModelRoleSettings({
           (level) => level !== "off",
         )
       : [];
-  const providerName = (choice: ModelRoleChoice) =>
-    (choice.creditOfferingId ? t`${appName} credits` : undefined) ||
-    (choice.credentialId &&
-      options.find((option) => option.credentialId === choice.credentialId)?.providerName) ||
-    providerLabel(choice.provider);
+  const providerName = (choice: ModelRoleChoice) => {
+    const named =
+      (choice.creditOfferingId ? t`${appName} credits` : undefined) ||
+      (choice.credentialId &&
+        options.find((option) => option.credentialId === choice.credentialId)?.providerName);
+    if (named) return named;
+    const entry = entryFor(choice);
+    return entry?.managed
+      ? modelConnectionNames(localizeModelEntry(entry)).providerName
+      : providerLabel(choice.provider);
+  };
   // What runs when the member chose no first model; named in the empty row and offered to
   // return to from the picker.
   const deployment = settings?.deploymentPrimary ?? null;
@@ -261,8 +267,8 @@ export function ModelRoleSettings({
       const list = current.primary ? [current.primary, ...current.backups] : current.backups;
       // A pick made from rows that were still catching up may already be in the loaded
       // list; it keeps its place rather than moving and displacing the main model.
-      if (list.some((item) => sameChoice(item, choice))) return {};
-      const at = slot === "add" ? -1 : list.findIndex((item) => sameChoice(item, slot));
+      if (list.some((item) => sameModelRoleChoice(item, choice))) return {};
+      const at = slot === "add" ? -1 : list.findIndex((item) => sameModelRoleChoice(item, slot));
       return modelRoleListPatch(
         current,
         at < 0 ? [...list, choice] : list.map((item, index) => (index === at ? choice : item)),
@@ -276,7 +282,7 @@ export function ModelRoleSettings({
     save((current) => ({
       primary: choice,
       backups: choice
-        ? current.backups.filter((item) => !sameChoice(item, choice))
+        ? current.backups.filter((item) => !sameModelRoleChoice(item, choice))
         : current.backups,
     }));
   const move = (index: number, target: number) => {
@@ -297,7 +303,8 @@ export function ModelRoleSettings({
   // A drop over a list that reloaded mid-drag is dropped rather than saving the old rows.
   const drop = () => {
     const unchanged = (list: ModelRoleChoice[]) =>
-      list.length === rows.length && list.every((item, index) => sameChoice(item, rows[index]!));
+      list.length === rows.length &&
+      list.every((item, index) => sameModelRoleChoice(item, rows[index]!));
     if (drag && unchanged(drag.from) && !unchanged(drag.order)) void commit(drag.order);
     setDrag(null);
   };
@@ -323,15 +330,6 @@ export function ModelRoleSettings({
       {index + 1}
     </span>
   );
-  const pickerTrigger = (label: string, sub?: string) => (
-    <button
-      type="button"
-      className="flex min-w-0 flex-1 items-baseline gap-2 rounded-md py-1 text-start outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-    >
-      <span className="truncate text-body-lg text-foreground">{label}</span>
-      {sub ? <span className="truncate text-body-sm text-muted-foreground">{sub}</span> : null}
-    </button>
-  );
 
   const optionsLabel = (name: string) => t`${name} options`;
 
@@ -348,13 +346,14 @@ export function ModelRoleSettings({
           <li className={`${rowClass} ${ordered ? "ps-8" : ""}`} data-testid="model-role-default">
             {ordered ? number(0) : null}
             <RoleModelPicker
-              trigger={pickerTrigger(
+              trigger={rolePickerTrigger(
                 // Blank until loaded, so an unloaded role never reads as unconfigured.
                 !settings ? "\u00a0" : deployment ? modelLabel(deployment) : defaultLabel,
                 deploymentSource,
               )}
               label={hideHeading ? defaultLabel : t`Change ${title}`}
               options={options}
+              current={deployment ?? undefined}
               providers={providers}
               disabled={pickerLocked}
               onPick={(option) => (option ? void setPrimary(choiceOf(option)) : null)}
@@ -425,9 +424,10 @@ export function ModelRoleSettings({
                 </>
               ) : null}
               <RoleModelPicker
-                trigger={pickerTrigger(name, providerName(choice))}
+                trigger={rolePickerTrigger(name, providerName(choice))}
                 label={t`Change ${name}`}
                 options={options}
+                current={choice}
                 defaultOption={
                   isPrimary && role !== "main" && deployment
                     ? { label: modelLabel(deployment), included: settings?.deploymentIncluded }
@@ -558,7 +558,7 @@ export function ModelRoleSettings({
               }
               label={t`Add fallback`}
               options={options.filter((option) =>
-                rows.every((row) => !sameChoice(row, choiceOf(option))),
+                rows.every((row) => !sameModelRoleChoice(row, choiceOf(option))),
               )}
               providers={providers}
               disabled={pickerLocked}

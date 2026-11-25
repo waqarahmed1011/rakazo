@@ -107,16 +107,21 @@ export function installPushHandlers(scope: PushScope): void {
   });
 
   async function answerApproval(notice: PushNotice, answer: string): Promise<void> {
-    const response = await scope
-      .fetch(`${scope.location.origin}/rpc/threads/answerApproval`, {
+    let answered = false;
+    try {
+      const response = await scope.fetch(`${scope.location.origin}/rpc/threads/answerApproval`, {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json", "x-rakazo-space-id": notice.spaceId },
         body: JSON.stringify({ json: { runId: notice.runId, answer } }),
-      })
-      .catch(() => null);
+      });
+      answered = response.ok;
+    } catch (error) {
+      // Offline: the card in the chat still waits for an answer.
+      console.warn("Could not answer the approval", error);
+    }
     // Signed out, already answered, or offline: the card in the chat says what happened.
-    if (!response?.ok) await openChat(notice);
+    if (!answered) await openChat(notice);
   }
 
   async function openChat(notice: PushNotice): Promise<void> {

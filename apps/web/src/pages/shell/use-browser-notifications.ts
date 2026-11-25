@@ -1,5 +1,6 @@
 import type { Bot, ChatAlert, ProductEvent } from "@rakazo/contracts";
 import { chatSnoozed } from "@rakazo/core";
+import { bestEffort } from "@rakazo/logging/best-effort";
 import type { RefObject } from "react";
 import { useCallback, useEffect, useRef } from "react";
 import { computerUpdates } from "../../lib/computers/computer-updates";
@@ -92,7 +93,7 @@ export function useBrowserNotifications(
   useEffect(() => prepareNotificationIcons(bots), [bots]);
   // A failed sync only means this browser is not reached while closed; the next load retries.
   useEffect(() => {
-    void syncBrowserPush(rpc).catch(() => undefined);
+    void bestEffort("sync browser push", syncBrowserPush(rpc));
   }, [rpc]);
   const openChatRef = useRef(openChat);
   openChatRef.current = openChat;

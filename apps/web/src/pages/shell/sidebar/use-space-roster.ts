@@ -540,8 +540,7 @@ export function useSpaceBootstrap({
 export function useRosterDrop({
   rpc,
   bots,
-  groups,
-  reorderRosterChat,
+  roster: { groups, reorderRosterChat },
   refreshBots,
   refreshGroupThread,
   activeGroupId,
@@ -549,8 +548,7 @@ export function useRosterDrop({
 }: {
   rpc: ReturnType<typeof createSpaceRpc>;
   bots: Bot[];
-  groups: Group[];
-  reorderRosterChat: SpaceRoster["reorderRosterChat"];
+  roster: Pick<SpaceRoster, "groups" | "reorderRosterChat">;
   refreshBots: () => Promise<void>;
   refreshGroupThread: (groupId: string) => Promise<ThreadSnapshot>;
   activeGroupId: RefObject<string | undefined>;
