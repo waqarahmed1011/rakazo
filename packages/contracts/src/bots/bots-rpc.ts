@@ -27,6 +27,7 @@ import {
   ListedBotSchema,
   ReorderBotsInput,
   ReorderChatsInput,
+  SetBotDailyRunLimitInput,
   SetBotTagsInput,
   UpdateBotInput,
 } from "./bot.js";
@@ -69,6 +70,7 @@ export const botsRpc = {
     reorder: oc.input(ReorderBotsInput).output(z.object({ ok: z.literal(true) })),
     reorderChats: oc.input(ReorderChatsInput).output(z.object({ ok: z.literal(true) })),
     setTags: oc.input(SetBotTagsInput).output(z.object({ ok: z.literal(true) })),
+    setDailyRunLimit: oc.input(SetBotDailyRunLimitInput).output(z.object({ ok: z.literal(true) })),
     update: oc.input(UpdateBotInput).output(BotSchema),
     restoreInstructions: oc
       .input(

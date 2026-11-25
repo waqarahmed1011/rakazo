@@ -109,6 +109,7 @@ function mapBot(
     webhookSecretId?: string | null;
     spawnKey?: string | null;
     tags?: string[];
+    dailyRunLimit?: number | null;
   },
   preview = "",
   status = "idle",
@@ -133,6 +134,7 @@ function mapBot(
     ...(bot.position === undefined ? {} : { position: bot.position }),
     sectionId: bot.sectionId,
     ...(bot.tags ? { tags: bot.tags } : {}),
+    ...(bot.dailyRunLimit !== undefined ? { dailyRunLimit: bot.dailyRunLimit } : {}),
     archivedAt: bot.archivedAt?.toISOString() ?? null,
     unread: unreadFor(bot.thread),
     snoozedUntil: snoozedUntilFor(bot.thread),
@@ -737,6 +739,14 @@ export function createRepos(
       const { count } = await prisma.bot.updateMany({
         where: { id: botId, spaceId: actor.spaceId, archivedAt: null },
         data: { tags: normalizeBotTags(tags) },
+      });
+      if (count === 0) throw new IsolationError();
+    },
+
+    async setDailyRunLimit(actor: Actor, botId: string, limit: number | null): Promise<void> {
+      const { count } = await prisma.bot.updateMany({
+        where: { id: botId, spaceId: actor.spaceId, archivedAt: null },
+        data: { dailyRunLimit: limit },
       });
       if (count === 0) throw new IsolationError();
     },

@@ -111,6 +111,8 @@ export interface ExecutorDeps {
    * `shutdownSignal` (see `drainRuns`): from then on it claims no run.
    */
   stoppingSignal?: AbortSignal;
+  /** Refuses a self-started run once its bot used its day's allowance; absent, nothing is capped. */
+  runBudget?: (run: { id: string; botId: string; trigger: string }) => Promise<void>;
   /** Set by withRunLease for one attempt; that run's history writes carry its lease. */
   runLease?: RunLease & { runId: string };
 }

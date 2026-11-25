@@ -422,6 +422,10 @@ export function botsRoutes(ctx: RouterContext) {
         await repos.reorderChats(context.actor, input.chats);
         return { ok: true as const };
       }),
+      setDailyRunLimit: authed.bots.setDailyRunLimit.handler(async ({ context, input }) => {
+        await repos.setDailyRunLimit(context.actor, input.botId, input.limit);
+        return { ok: true as const };
+      }),
       setTags: authed.bots.setTags.handler(async ({ context, input }) => {
         await repos.setTags(context.actor, input.botId, input.tags);
         await syncTagGroups(deps.prisma, context.actor.spaceId);

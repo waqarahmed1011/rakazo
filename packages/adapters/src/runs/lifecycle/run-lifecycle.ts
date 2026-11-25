@@ -41,6 +41,7 @@ import type { TakeoverResumeCheckpoint } from "../turn/takeover-resume.js";
 import { continueRunClaimFence, TAKEOVER_RESUME_CHECKPOINTS } from "../turn/takeover-resume.js";
 import { wakeRun } from "../wakeups/wake-run.js";
 import { claimWaitsForChat, startRunsWaitingOnChat } from "./chat-wait.js";
+import { DailyRunLimitError } from "./run-budget.js";
 import { notifyRun } from "./run-notifications.js";
 import { RunOriginUnauthorizedError } from "./run-origin.js";
 
@@ -108,6 +109,7 @@ export async function failRunBeforeTurn(
   botName: string,
   lease: { attemptId: string; workerId: string; fence: number },
   message: string,
+  options: { quiet?: boolean } = {},
 ): Promise<boolean> {
   const failed = await deps.events.finalizeRun({
     spaceId: run.spaceId,
@@ -138,7 +140,7 @@ export async function failRunBeforeTurn(
     await returnHelperOutcome(deps, run, { status: "failed", text: message }).catch((error) =>
       getLogger().error("background helper failure return", error),
     );
-  } else if (!failed.continuationRunId) {
+  } else if (!failed.continuationRunId && !options.quiet) {
     await notifyRun(deps, run, {
       kind: "failure",
       title: `${displayName(botName, "Bot")} failed`,
@@ -506,7 +508,9 @@ export async function retryRunSetup(
   const retryForever = computerBusy || databaseDown;
   // Only Recover brings this computer back, so the run ends now rather than starting it again.
   const recoveryRequired = computerNeedsRecovery(setupError);
-  const diskTooLarge = setupError instanceof SandboxDiskTooLargeError;
+  // These explain themselves: their own message is what the user sees.
+  const diskTooLarge =
+    setupError instanceof SandboxDiskTooLargeError || setupError instanceof DailyRunLimitError;
   const setupMessage = redactSecrets(
     recoveryRequired
       ? computerRunError(setupError)
@@ -560,6 +564,7 @@ export async function retryRunSetup(
       bot?.name ?? "",
       { attemptId: attempt.id, workerId, fence },
       setupMessage,
+      { quiet: setupError instanceof DailyRunLimitError && setupError.repeat },
     );
     return;
   }

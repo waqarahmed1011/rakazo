@@ -75,6 +75,7 @@ import { auditLogConfig, createAuditLogReconciler } from "../../webhooks/audit-f
 import { createRunExecutor } from "../executor/executor.js";
 import type { ExecutorDeps } from "../executor/executor-deps.js";
 import { deploymentLabsFromEnv } from "../labs-env.js";
+import { assertWithinDailyRunLimit } from "../lifecycle/run-budget.js";
 import { createBackgroundJobHandlers } from "../wakeups/background-job-handlers.js";
 import { createJobReconciler } from "../wakeups/job-reconciler.js";
 
@@ -305,6 +306,7 @@ export function createRunRuntime(
     : undefined;
   const executor = createRunExecutor({
     ...executorDeps,
+    runBudget: (run) => assertWithinDailyRunLimit(executorDeps.prisma, run),
     runtime,
     maxUploadSizeBytes: env.maxUploadSizeBytes,
     connector: connectors.stack.connector,

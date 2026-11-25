@@ -83,6 +83,7 @@ vi.mock("../../space/KnowledgeSection", () => ({ KnowledgeSection: () => null })
 vi.mock("./avatar-studio-popover", () => ({ AvatarStudioPopover: () => null }));
 vi.mock("../../../components/pages/PagesList", () => ({ PagesList: () => null }));
 vi.mock("./bot-tags", () => ({ BotTagsSection: () => null }));
+vi.mock("./bot-run-limit", () => ({ BotRunLimitSection: () => null }));
 
 import { BotSettings } from "./bot-panel";
 

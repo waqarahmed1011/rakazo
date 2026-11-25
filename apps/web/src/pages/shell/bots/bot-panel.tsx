@@ -32,6 +32,7 @@ import { useSpaceQueries } from "../../../lib/query/query";
 import { errorText } from "../../../lib/query/user-error";
 import { ROUTINE_PREVIEW_COUNT, RoutineList } from "../../routines/RoutineList";
 import { AvatarStudioPopover } from "./avatar-studio-popover";
+import { BotRunLimitSection } from "./bot-run-limit";
 import {
   DescriptionGroup,
   ModelRow,
@@ -596,6 +597,7 @@ export function BotSettings({
         </div>
         <div className="space-y-6">
           <BotTagsSection bot={bot} />
+          <BotRunLimitSection bot={bot} />
           {computer ? (
             <PanelSection label={<Trans>Computer</Trans>}>{computer}</PanelSection>
           ) : null}

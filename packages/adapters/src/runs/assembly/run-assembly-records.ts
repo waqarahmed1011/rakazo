@@ -158,6 +158,7 @@ export async function loadRunRecords(
   const { contextStrategy } = services;
   const { deps, run, secrets: runSecrets } = hold;
   const { pinnedComputerModels } = parts.saved;
+  await deps.runBudget?.(run);
   const origin = await loadRunOrigin(deps.prisma, run);
   if (isDelegatedRun(run.trigger) && run.delegatedFromRunId && !origin)
     throw new RunOriginUnauthorizedError();

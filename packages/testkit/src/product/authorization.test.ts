@@ -353,6 +353,7 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["bots/reorder"],
       ["bots/reorderChats", { chats: [] }],
       ["bots/setTags", { botId: "missing-bot", tags: [] }],
+      ["bots/setDailyRunLimit", { botId: "missing-bot", limit: 10 }],
       ["bots/restoreInstructions"],
       ["bots/setComputer"],
       ["bots/rotateWebhookSecret"],

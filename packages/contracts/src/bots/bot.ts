@@ -50,6 +50,8 @@ export const BotSchema = z.object({
   sectionId: Id.nullable(),
   /** Team labels; each one with two or more bots has its own group chat. */
   tags: z.array(z.string()).optional(),
+  /** Runs it may start on its own per 24 hours; null is the default, 0 is no limit. */
+  dailyRunLimit: z.number().int().nonnegative().nullable().optional(),
   archivedAt: z.string().nullable(),
   unread: z.boolean(),
   /** Hidden from the viewer's chat list until then; past, the chat has just woken. */
@@ -137,6 +139,13 @@ export const SetBotTagsInput = z.object({
   tags: z.array(z.string().trim().min(1).max(BOT_TAG_MAX_LENGTH)).max(BOT_TAGS_MAX),
 });
 export type SetBotTagsInput = z.infer<typeof SetBotTagsInput>;
+
+export const BOT_DAILY_RUN_LIMIT_MAX = 1000;
+export const SetBotDailyRunLimitInput = z.object({
+  botId: Id,
+  limit: z.number().int().min(0).max(BOT_DAILY_RUN_LIMIT_MAX).nullable(),
+});
+export type SetBotDailyRunLimitInput = z.infer<typeof SetBotDailyRunLimitInput>;
 
 export const BOT_SECTION_NAME_MAX_LENGTH = 60;
 export const BotSectionName = z.string().trim().min(1).max(BOT_SECTION_NAME_MAX_LENGTH);

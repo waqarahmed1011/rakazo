@@ -16,7 +16,7 @@ import {
   userRunError,
 } from "@rakazo/core";
 import { isDatabaseUnavailable, retryWhileDatabaseUnavailable } from "@rakazo/db";
-import { getLogger } from "@rakazo/logging";
+import { bestEffort, getLogger } from "@rakazo/logging";
 import { sanitizedError } from "@rakazo/logging/monitoring";
 import { returnBotMessageOutcome } from "../../messaging/bot-messages.js";
 import {
@@ -36,6 +36,7 @@ import {
 import type { RunContext, RunState } from "../assembly/run-context.js";
 import { runPromotesMidTurnNarration } from "../assembly/run-replies.prompt.js";
 import { scheduleRoutineRetry } from "../assembly/run-routines.js";
+import { chaseFailedRun } from "./run-chase.js";
 import {
   computerRetryDelay,
   enqueueSteeringContinuation,
@@ -282,4 +283,6 @@ export async function failRun(
       threadId: thread.id,
     });
   }
+  if (!failed.continuationRunId && !retrying)
+    await bestEffort("chase a failed run", chaseFailedRun(deps, run, bot, message, error));
 }
