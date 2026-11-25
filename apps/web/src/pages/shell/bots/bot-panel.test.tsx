@@ -120,7 +120,6 @@ vi.mock("./bot-tags", () => ({ BotTagsSection: () => null }));
 vi.mock("./bot-access", () => ({ BotAccessSection: () => null }));
 vi.mock("./bot-run-limit", () => ({
   BotRunLimitSection: () => null,
-  BotMinutesSavedSection: () => null,
 }));
 vi.mock("./avatar-studio-popover", () => ({
   AvatarStudioPopover: ({

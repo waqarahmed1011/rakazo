@@ -134,6 +134,16 @@ export function spacesRoutes(ctx: RouterContext) {
           return renamed;
         }),
       ),
+      // Only the caller's own membership row changes: the order is personal.
+      setSectionOrder: authed.spaces.setSectionOrder.handler(({ context, input }) =>
+        asMemberOf(deps.prisma, context.actor, input.spaceId, async () => {
+          await deps.prisma.spaceMember.update({
+            where: { spaceId_userId: { spaceId: input.spaceId, userId: context.actor.userId } },
+            data: { sidebarSectionOrder: [...new Set(input.order)] },
+          });
+          return { ok: true as const };
+        }),
+      ),
       // Acts on the Space being deleted, not the current one, so its teardown sees
       // that Space's rows. Ownership is checked inside.
       remove: authed.spaces.remove.handler(({ context, input }) =>
@@ -414,6 +424,7 @@ async function memberSpaceNavigation(
     select: {
       spaceId: true,
       role: true,
+      sidebarSectionOrder: true,
       space: {
         select: {
           name: true,
@@ -557,6 +568,7 @@ async function memberSpaceNavigation(
           (conversation) => conversation.spaceId === membership.spaceId,
         ),
         botSections: sectionsFor(membership.spaceId),
+        sectionOrder: membership.sidebarSectionOrder,
       };
     }),
   };

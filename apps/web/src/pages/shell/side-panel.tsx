@@ -34,6 +34,7 @@ export function ShellSidePanel({
   openBot,
   modelFocusRequest,
   onClearBot,
+  onDeleteBot,
   discardChatAttachments,
   onCoversChat,
   onOverlays,
@@ -57,6 +58,7 @@ export function ShellSidePanel({
   openBot: (botId: string) => void;
   modelFocusRequest: number;
   onClearBot: (bot: Bot) => void;
+  onDeleteBot: (bot: Bot) => void;
   /** Drops a deleted chat's pending attachments with their previews. */
   discardChatAttachments: (threadKey: string) => void;
   onCoversChat: (covers: boolean) => void;
@@ -183,6 +185,7 @@ export function ShellSidePanel({
                 URL.revokeObjectURL(url);
               }}
               onClear={() => onClearBot(active)}
+              onDelete={() => onDeleteBot(active)}
             />
           ) : null}
           {panel === "routine" && routineEditorProps ? (

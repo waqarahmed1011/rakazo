@@ -34,6 +34,8 @@ type SidebarSpace<TBot extends SidebarChat, TGroup extends SidebarChat> = {
   bots: readonly TBot[];
   groups: readonly TGroup[];
   botSections: readonly { id: string; name: string }[];
+  /** This person's saved order for the tag sections. */
+  sectionOrder?: readonly string[];
 };
 
 export async function commitSpaceRename(input: {
@@ -92,6 +94,7 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
           ...tagSections(
             items.filter((item) => !item.pinned),
             arrange?.sort ?? "custom",
+            space.sectionOrder ?? [],
           ).map((section) => ({
             key: section.key,
             title:
@@ -131,6 +134,10 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         ? { ...group, title: null }
         : group,
     );
+    // The tag sections, in the order shown, so a header can move itself up or down.
+    const orderKeys = byTags
+      ? grouped.filter((group) => group.key !== "pinned").map((group) => group.key)
+      : [];
     // A Space whose chats are all pinned keeps its name above the tiles.
     const listIndex = headed.findIndex((group) => group.key !== "pinned");
     const firstHeader = showSpaceNames || listIndex < 0 ? 0 : listIndex;
@@ -154,6 +161,8 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
       spaceId: space.id,
       spaceName: space.name,
       canOpenSpaceSettings: index === firstHeader,
+      orderKey: orderKeys.includes(group.key) ? group.key : null,
+      orderKeys,
     }));
     if (sections.length > 0) return sections;
     // Keep empty spaces selectable; chat clicks are the only switch control.
@@ -176,6 +185,8 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
           spaceId: space.id,
           spaceName: space.name,
           canOpenSpaceSettings: false,
+          orderKey: null as string | null,
+          orderKeys: [] as string[],
         }));
     // A lone space is the selected one, so its settings stay in the account menu too.
     const lone = !showSpaceNames && !space.canRename && !space.canDelete;
@@ -197,6 +208,8 @@ export function sidebarGroupsForSpaces<TBot extends SidebarChat, TGroup extends 
         spaceId: space.id,
         spaceName: space.name,
         canOpenSpaceSettings: true,
+        orderKey: null,
+        orderKeys: [],
       },
       ...emptySections,
     ];

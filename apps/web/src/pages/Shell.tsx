@@ -1,7 +1,7 @@
 import { Trans } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
 import { DEFAULT_NEW_BOT_AVATAR_SET, hasLab } from "@rakazo/contracts";
-import { chatWoke } from "@rakazo/core";
+import { chatWoke, moveSectionKey } from "@rakazo/core";
 import { bestEffort } from "@rakazo/logging/best-effort";
 import { Button } from "@rakazo/ui-web";
 import { useIsMobile } from "@rakazo/ui-web/hooks/use-mobile";
@@ -690,6 +690,17 @@ function SpaceShell() {
             openSpaceSettings={openSpaceSettings}
             setRenameSectionTarget={dialogs.setRenameSectionTarget}
             setDeleteSectionTarget={dialogs.setDeleteSectionTarget}
+            moveSidebarSection={(spaceId, keys, key, step) => {
+              const order = moveSectionKey(keys, key, step);
+              setSpaces((current) =>
+                current.map((space) =>
+                  space.id === spaceId ? { ...space, sectionOrder: order } : space,
+                ),
+              );
+              void rpc.spaces
+                .setSectionOrder({ spaceId, order })
+                .catch(() => refreshBots().catch(() => undefined));
+            }}
             toggleSidebarSection={toggleSidebarSection}
             inGroup={inGroup}
             active={active}
@@ -890,6 +901,7 @@ function SpaceShell() {
         openBot={openBot}
         modelFocusRequest={modelFocusRequest}
         onClearBot={(bot) => dialogs.setClearTarget({ kind: "bot", chat: bot })}
+        onDeleteBot={(bot) => dialogs.setDeleteTarget(bot)}
       />
 
       <Suspense fallback={null}>

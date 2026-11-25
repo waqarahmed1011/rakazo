@@ -19,6 +19,10 @@ import {
   TooltipTrigger,
 } from "@rakazo/ui-web";
 import {
+  ArrowDown,
+  ArrowDownToLine,
+  ArrowUp,
+  ArrowUpToLine,
   ChevronDown,
   CircleAlert,
   Globe,
@@ -55,6 +59,7 @@ export function SidebarRoster({
   openSpaceSettings,
   setRenameSectionTarget,
   setDeleteSectionTarget,
+  moveSidebarSection,
   toggleSidebarSection,
   inGroup,
   active,
@@ -84,6 +89,8 @@ export function SidebarRoster({
   openSpaceSettings: (spaceId: string) => void;
   setRenameSectionTarget: (target: { section: BotSection; spaceId: string }) => void;
   setDeleteSectionTarget: (target: { section: BotSection; spaceId: string }) => void;
+  /** Moves a tag section: `step` places down (negative is up); Infinity-like steps go to an end. */
+  moveSidebarSection?: (spaceId: string, keys: string[], key: string, step: number) => void;
   toggleSidebarSection: (key: string) => void;
   inGroup: boolean;
   active: Pick<Bot, "id"> | undefined;
@@ -126,6 +133,13 @@ export function SidebarRoster({
               : (spaces.find((space) => space.id === group.spaceId)?.botSections ?? [])
             ).find((item) => item.id === group.sectionId)
           : undefined;
+        const orderIndex = group.orderKey ? group.orderKeys.indexOf(group.orderKey) : -1;
+        const movable = Boolean(moveSidebarSection && group.orderKey && group.orderKeys.length > 1);
+        const move = (step: number) => {
+          if (group.orderKey)
+            moveSidebarSection?.(group.spaceId, group.orderKeys, group.orderKey, step);
+        };
+        const hasMenu = Boolean(section) || movable;
         return (
           <Collapsible
             key={group.key}
@@ -157,7 +171,7 @@ export function SidebarRoster({
                   applyRosterDrop(headerDropTarget, false, listKeys);
                 }}
               >
-                <ContextMenu disabled={!section}>
+                <ContextMenu disabled={!hasMenu}>
                   <ContextMenuTrigger
                     render={group.emptySpaceId ? <button type="button" /> : <CollapsibleTrigger />}
                     className="col-start-1 row-start-1 flex w-full min-w-0 items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-start text-body-sm text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ring"
@@ -166,7 +180,7 @@ export function SidebarRoster({
                         openSpaceChat(group.emptySpaceId, "/onboarding");
                       }
                     }}
-                    onContextMenu={section ? (event) => event.currentTarget.focus() : undefined}
+                    onContextMenu={hasMenu ? (event) => event.currentTarget.focus() : undefined}
                     aria-description={
                       chatCount > 0
                         ? t`${plural(chatCount, { one: "# chat", other: "# chats" })}`
@@ -217,24 +231,61 @@ export function SidebarRoster({
                       </span>
                     )}
                   </ContextMenuTrigger>
-                  {section ? (
+                  {hasMenu ? (
                     <ContextMenuContent
-                      aria-label={t`Actions for ${section.name}`}
+                      aria-label={t`Actions for ${headerName(group)}`}
                       className="w-[220px]"
                     >
-                      <ContextMenuItem
-                        onClick={() => setRenameSectionTarget({ section, spaceId: group.spaceId })}
-                      >
-                        <Pencil />
-                        {t`Rename section`}
-                      </ContextMenuItem>
-                      <ContextMenuItem
-                        variant="destructive"
-                        onClick={() => setDeleteSectionTarget({ section, spaceId: group.spaceId })}
-                      >
-                        <Trash2 />
-                        {t`Delete section`}
-                      </ContextMenuItem>
+                      {movable ? (
+                        <>
+                          <ContextMenuItem disabled={orderIndex <= 0} onClick={() => move(-1)}>
+                            <ArrowUp />
+                            {t`Move up`}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            disabled={orderIndex >= group.orderKeys.length - 1}
+                            onClick={() => move(1)}
+                          >
+                            <ArrowDown />
+                            {t`Move down`}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            disabled={orderIndex <= 0}
+                            onClick={() => move(-group.orderKeys.length)}
+                          >
+                            <ArrowUpToLine />
+                            {t`Move to top`}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            disabled={orderIndex >= group.orderKeys.length - 1}
+                            onClick={() => move(group.orderKeys.length)}
+                          >
+                            <ArrowDownToLine />
+                            {t`Move to bottom`}
+                          </ContextMenuItem>
+                        </>
+                      ) : null}
+                      {section ? (
+                        <>
+                          <ContextMenuItem
+                            onClick={() =>
+                              setRenameSectionTarget({ section, spaceId: group.spaceId })
+                            }
+                          >
+                            <Pencil />
+                            {t`Rename section`}
+                          </ContextMenuItem>
+                          <ContextMenuItem
+                            variant="destructive"
+                            onClick={() =>
+                              setDeleteSectionTarget({ section, spaceId: group.spaceId })
+                            }
+                          >
+                            <Trash2 />
+                            {t`Delete section`}
+                          </ContextMenuItem>
+                        </>
+                      ) : null}
                     </ContextMenuContent>
                   ) : null}
                 </ContextMenu>

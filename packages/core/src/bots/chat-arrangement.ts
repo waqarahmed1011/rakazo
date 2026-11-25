@@ -40,10 +40,13 @@ export type TagSection<T> = { key: string; tag: string | null; bots: T[] };
 /**
  * Sidebar sections by tag: group chats first, then one section per tag (a bot with two tags is in
  * both), most recently active first, then the bots with no tag. Empty sections are left out.
+ * A saved `order` of section keys wins over that default; keys it doesn't name keep their
+ * default order after the named ones.
  */
 export function tagSections<T extends ArrangedChat>(
   items: readonly T[],
   sort: ChatSort,
+  order: readonly string[] = [],
 ): TagSection<T>[] {
   const groups = items.filter((item) => item.kind === "group");
   const tags = new Map<string, { tag: string; bots: T[] }>();
@@ -63,7 +66,7 @@ export function tagSections<T extends ArrangedChat>(
   const tagged = [...tags.entries()].sort(
     ([, a], [, b]) => latest(b.bots) - latest(a.bots) || a.tag.localeCompare(b.tag),
   );
-  return [
+  const sections = [
     { key: "groups", tag: null, bots: sortChatItems(groups, sort) },
     ...tagged.map(([key, section]) => ({
       key: `tag:${key}`,
@@ -72,4 +75,33 @@ export function tagSections<T extends ArrangedChat>(
     })),
     { key: "untagged", tag: null, bots: sortChatItems(untagged, sort) },
   ].filter((section) => section.bots.length > 0);
+  return applySectionOrder(sections, order);
+}
+
+/** Puts sections in a saved order; sections it doesn't name follow in their incoming order. */
+export function applySectionOrder<S extends { key: string }>(
+  sections: readonly S[],
+  order: readonly string[],
+): S[] {
+  if (order.length === 0) return [...sections];
+  const rank = new Map(order.map((key, index) => [key, index]));
+  return sections
+    .map((section, index) => ({ section, index }))
+    .sort(
+      (a, b) =>
+        (rank.get(a.section.key) ?? order.length + a.index) -
+        (rank.get(b.section.key) ?? order.length + b.index),
+    )
+    .map((entry) => entry.section);
+}
+
+/** The section order after moving `key` by `step` places (negative moves it up). */
+export function moveSectionKey(keys: readonly string[], key: string, step: number): string[] {
+  const from = keys.indexOf(key);
+  if (from < 0) return [...keys];
+  const to = Math.max(0, Math.min(keys.length - 1, from + step));
+  const next = [...keys];
+  next.splice(from, 1);
+  next.splice(to, 0, key);
+  return next;
 }

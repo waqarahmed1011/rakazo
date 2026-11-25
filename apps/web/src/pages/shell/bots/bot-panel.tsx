@@ -33,7 +33,7 @@ import { errorText } from "../../../lib/query/user-error";
 import { ROUTINE_PREVIEW_COUNT, RoutineList } from "../../routines/RoutineList";
 import { AvatarStudioPopover } from "./avatar-studio-popover";
 import { BotAccessSection } from "./bot-access";
-import { BotMinutesSavedSection, BotRunLimitSection } from "./bot-run-limit";
+import { BotRunLimitSection } from "./bot-run-limit";
 import {
   DescriptionGroup,
   ModelRow,
@@ -82,6 +82,7 @@ export function BotSettings({
   onSave,
   onExport,
   onClear,
+  onDelete,
   focusModel = 0,
 }: {
   bot: Bot;
@@ -111,6 +112,8 @@ export function BotSettings({
   }) => Promise<void>;
   onExport: () => Promise<void>;
   onClear: () => void;
+  /** Opens the delete confirmation; absent where this person cannot delete the bot. */
+  onDelete?: () => void;
 }) {
   const { t } = useLingui();
   const ids = useId();
@@ -549,6 +552,11 @@ export function BotSettings({
               <DropdownMenuItem variant="destructive" onClick={onClear}>
                 <Trans>Clear conversation</Trans>
               </DropdownMenuItem>
+              {onDelete ? (
+                <DropdownMenuItem variant="destructive" onClick={onDelete}>
+                  <Trans>Delete bot</Trans>
+                </DropdownMenuItem>
+              ) : null}
             </DropdownMenuContent>
           </DropdownMenu>
           {headerButtons}
@@ -599,7 +607,6 @@ export function BotSettings({
         <div className="space-y-6">
           <BotTagsSection bot={bot} />
           <BotRunLimitSection bot={bot} />
-          <BotMinutesSavedSection bot={bot} />
           <BotAccessSection bot={bot} />
           {computer ? (
             <PanelSection label={<Trans>Computer</Trans>}>{computer}</PanelSection>

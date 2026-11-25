@@ -1,6 +1,11 @@
 import { BOT_COLORS } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { sortChatItems, tagSections } from "./chat-arrangement.js";
+import {
+  applySectionOrder,
+  moveSectionKey,
+  sortChatItems,
+  tagSections,
+} from "./chat-arrangement.js";
 
 const [first, second] = BOT_COLORS;
 const bot = (name: string, chat: { color?: string; tags?: string[]; updatedAt?: string } = {}) => ({
@@ -51,6 +56,35 @@ describe("tagSections", () => {
       ["tag:chief", "Chief", ["Marketing Chief", "CFO"]],
       ["tag:marketing", "Marketing", ["Marketing Chief"]],
       ["untagged", null, ["Scheduler"]],
+    ]);
+  });
+});
+
+describe("saved section order", () => {
+  const chat = (name: string, tags: string[] = []) => ({
+    kind: "bot" as const,
+    chat: { name, tags, updatedAt: "2026-01-01T00:00:00Z" },
+  });
+  const group = { kind: "group" as const, chat: { name: "Office" } };
+
+  it("puts group chats wherever the person moved them", () => {
+    const items = [group, chat("Chief", ["Chiefs"]), chat("Ads", ["Marketing"]), chat("Misc")];
+    const keys = tagSections(items, "custom", ["tag:chiefs", "groups"]).map((s) => s.key);
+    expect(keys).toEqual(["tag:chiefs", "groups", "tag:marketing", "untagged"]);
+  });
+
+  it("keeps the default order without a saved one", () => {
+    const items = [chat("Chief", ["Chiefs"]), group];
+    expect(tagSections(items, "custom").map((s) => s.key)).toEqual(["groups", "tag:chiefs"]);
+  });
+
+  it("moves a key and clamps at the ends", () => {
+    expect(moveSectionKey(["a", "b", "c"], "c", -1)).toEqual(["a", "c", "b"]);
+    expect(moveSectionKey(["a", "b", "c"], "a", -5)).toEqual(["a", "b", "c"]);
+    expect(moveSectionKey(["a", "b", "c"], "a", 99)).toEqual(["b", "c", "a"]);
+    expect(applySectionOrder([{ key: "x" }, { key: "y" }], ["y"])).toEqual([
+      { key: "y" },
+      { key: "x" },
     ]);
   });
 });

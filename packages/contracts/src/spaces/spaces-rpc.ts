@@ -31,6 +31,15 @@ export const spacesRpc = {
     remove: oc
       .input(z.object({ spaceId: Id }))
       .output(z.object({ ok: z.literal(true), activeSpaceId: Id })),
+    /** Saves the order this person wants the sidebar's tag sections in. */
+    setSectionOrder: oc
+      .input(
+        z.object({
+          spaceId: Id,
+          order: z.array(z.string().trim().min(1).max(200)).max(200),
+        }),
+      )
+      .output(z.object({ ok: z.literal(true) })),
     members: {
       list: oc.input(z.object({ spaceId: Id })).output(SpaceMembersSchema),
       /** Owner only. Adds someone already in the Space's organization. */

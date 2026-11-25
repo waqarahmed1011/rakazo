@@ -66,6 +66,8 @@ export const SpaceSchema = z.object({
   groups: z.array(SpaceGroupSchema),
   externalConversations: z.array(ExternalConversationSchema),
   botSections: z.array(BotSectionSchema),
+  /** This person's order for the sidebar's tag sections. Absent or empty keeps the default. */
+  sectionOrder: z.array(z.string()).optional(),
 });
 export type Space = z.infer<typeof SpaceSchema>;
 

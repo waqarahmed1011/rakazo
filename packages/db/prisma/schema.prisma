@@ -811,6 +811,9 @@ model SpaceMember {
   member           Member                 @relation(fields: [organizationId, userId], references: [organizationId, userId], onDelete: Cascade)
   role             String                 @default("member")
   createdAt        DateTime
+  /// This person's order for the sidebar's tag sections ("groups", "tag:<key>", "untagged").
+  /// Empty keeps the default order.
+  sidebarSectionOrder String[]          @default([])
   modelPreferences SpaceModelPreference[]
   voicePreferences SpaceVoicePreference[]
   aiDataConsents AiDataConsent[]
