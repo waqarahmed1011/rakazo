@@ -1,7 +1,7 @@
 import type { Bot, Group, RunActivityRow } from "@rakazo/contracts";
-import { activitySections, isRunWaitingOnUser } from "@rakazo/core";
+import { activitySections, botTagKey, isRunWaitingOnUser, spaceBotTags } from "@rakazo/core";
 
-export type OverviewTeam = { id: string; name: string; bots: Bot[] };
+export type OverviewTeam = { id: string | null; name: string; bots: Bot[] };
 
 /**
  * What the overview shows: runs waiting on a person, runs that stalled or failed, live work,
@@ -24,13 +24,21 @@ export function overviewModel({
   const needsYou = sections.attention.filter((run) => isRunWaitingOnUser(run.status));
   const stuck = sections.attention.filter((run) => !isRunWaitingOnUser(run.status));
   const byId = new Map(bots.map((bot) => [bot.id, bot]));
-  const teams: OverviewTeam[] = groups
-    .filter((group) => !group.archivedAt)
-    .map((group) => ({
-      id: group.id,
-      name: group.name,
-      bots: group.members.flatMap((member) => byId.get(member.botId) ?? []),
-    }));
+  const liveGroups = groups.filter((group) => !group.archivedAt);
+  // Tags are the org chart once bots have them; each team opens its tag's group chat.
+  const tags = spaceBotTags(bots);
+  const teams: OverviewTeam[] =
+    tags.length > 0
+      ? tags.map((tag) => ({
+          id: liveGroups.find((group) => group.tagKey === botTagKey(tag))?.id ?? null,
+          name: tag,
+          bots: bots.filter((bot) => bot.tags?.some((own) => botTagKey(own) === botTagKey(tag))),
+        }))
+      : liveGroups.map((group) => ({
+          id: group.id,
+          name: group.name,
+          bots: group.members.flatMap((member) => byId.get(member.botId) ?? []),
+        }));
   const inTeam = new Set(teams.flatMap((team) => team.bots.map((bot) => bot.id)));
   return {
     needsYou,

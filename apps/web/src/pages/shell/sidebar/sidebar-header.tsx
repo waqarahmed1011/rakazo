@@ -105,11 +105,11 @@ export function SidebarHeader({
           </IconTooltip>
         ) : null}
         {mini || !onOverview ? null : (
-          <IconTooltip label={t`Overview`} side={labelSide}>
+          <IconTooltip label={t`Dashboard`} side={labelSide}>
             <Button
               variant="ghost"
               size="icon"
-              aria-label={t`Overview`}
+              aria-label={t`Dashboard`}
               onClick={onOverview}
               className="app-no-drag text-muted-foreground"
             >

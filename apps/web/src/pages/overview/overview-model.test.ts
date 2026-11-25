@@ -51,6 +51,23 @@ describe("overviewModel", () => {
     ]);
     expect(model.unteamed.map((item) => item.id)).toEqual(["scout"]);
   });
+
+  it("builds the teams from tags once bots have them, opening each tag's group chat", () => {
+    const tagged = (id: string, tags: string[]) => ({ ...bot(id), tags });
+    const office = { ...group("office", ["chief", "ads"]), tagKey: "marketing" };
+    const model = overviewModel({
+      active: [],
+      recent: [],
+      bots: [tagged("chief", ["Marketing", "Chief"]), tagged("ads", ["marketing"]), bot("scout")],
+      groups: [office],
+      now,
+    });
+    expect(model.teams.map((team) => [team.id, team.name, team.bots.map((b) => b.id)])).toEqual([
+      [null, "Chief", ["chief"]],
+      ["office", "Marketing", ["chief", "ads"]],
+    ]);
+    expect(model.unteamed.map((item) => item.id)).toEqual(["scout"]);
+  });
 });
 
 describe("nextRoutineRun", () => {
