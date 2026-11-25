@@ -32,6 +32,7 @@ import { useSpaceQueries } from "../../../lib/query/query";
 import { errorText } from "../../../lib/query/user-error";
 import { ROUTINE_PREVIEW_COUNT, RoutineList } from "../../routines/RoutineList";
 import { AvatarStudioPopover } from "./avatar-studio-popover";
+import { BotAccessSection } from "./bot-access";
 import { BotMinutesSavedSection, BotRunLimitSection } from "./bot-run-limit";
 import {
   DescriptionGroup,
@@ -599,6 +600,7 @@ export function BotSettings({
           <BotTagsSection bot={bot} />
           <BotRunLimitSection bot={bot} />
           <BotMinutesSavedSection bot={bot} />
+          <BotAccessSection bot={bot} />
           {computer ? (
             <PanelSection label={<Trans>Computer</Trans>}>{computer}</PanelSection>
           ) : null}

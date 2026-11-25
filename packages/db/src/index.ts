@@ -20,6 +20,7 @@ export * from "./billing/sandbox-allowance.js";
 export * from "./billing/spending.js";
 export * from "./billing/usage.js";
 export * from "./bots/approval-settings.js";
+export * from "./bots/bot-access.js";
 export * from "./bots/bot-email-address.js";
 export * from "./bots/bot-email-attachments.js";
 export * from "./bots/bot-email-sends.js";

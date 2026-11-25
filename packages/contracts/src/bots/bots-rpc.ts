@@ -20,6 +20,7 @@ import { threadTarget } from "../threads/thread-send.js";
 import {
   AgentSecretInputSchema,
   AgentSecretSchema,
+  BotAccessEntrySchema,
   BotSchema,
   BotSectionName,
   BotSectionSchema,
@@ -27,6 +28,7 @@ import {
   ListedBotSchema,
   ReorderBotsInput,
   ReorderChatsInput,
+  SetBotAccessInput,
   SetBotDailyRunLimitInput,
   SetBotMinutesSavedInput,
   SetBotTagsInput,
@@ -76,6 +78,9 @@ export const botsRpc = {
     reorder: oc.input(ReorderBotsInput).output(z.object({ ok: z.literal(true) })),
     reorderChats: oc.input(ReorderChatsInput).output(z.object({ ok: z.literal(true) })),
     setTags: oc.input(SetBotTagsInput).output(z.object({ ok: z.literal(true) })),
+    /** The bot's managers only: each member of the space and what they may do with the bot. */
+    access: oc.input(z.object({ botId: Id })).output(z.array(BotAccessEntrySchema)),
+    setAccess: oc.input(SetBotAccessInput).output(z.object({ ok: z.literal(true) })),
     setMinutesSaved: oc.input(SetBotMinutesSavedInput).output(z.object({ ok: z.literal(true) })),
     setDailyRunLimit: oc.input(SetBotDailyRunLimitInput).output(z.object({ ok: z.literal(true) })),
     update: oc.input(UpdateBotInput).output(BotSchema),

@@ -783,6 +783,7 @@ model Space {
   messagingInstallSessions MessagingInstallSession[]
   approvalWaits               ApprovalWait[]
   memorySuggestions           MemorySuggestion[]
+  botAccess                   BotAccess[]
 }
 
 /// A space's data encryption key, wrapped by a master key. There is no foreign key:
@@ -1929,6 +1930,24 @@ model MemoryDocument {
 
 /// A change to the space's shared memory waiting for a space admin: a bot's, or a member's who
 /// is not an admin. `content` null proposes deleting the document.
+/// What one member may do with one bot. No row is "edit"; space admins and the bot's creator
+/// always edit.
+model BotAccess {
+  id        String   @id @default(cuid())
+  spaceId   String
+  space     Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId     String
+  userId    String
+  /// "hidden", "chat" or "edit".
+  level     String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([botId, userId])
+  @@index([spaceId, userId])
+  @@map("bot_access")
+}
+
 model MemorySuggestion {
   id              String    @id @default(cuid())
   spaceId         String

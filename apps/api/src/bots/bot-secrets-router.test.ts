@@ -11,7 +11,7 @@ import {
 import type { PrismaClient } from "@rakazo/db";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "../router.js";
-import { createRouter } from "../router.js";
+import { createRouter } from "../router-test-support.js";
 import { handleRpcError } from "../rpc-errors.js";
 
 // RFC 6238's test key, written in pieces so it never reads as a saved secret.

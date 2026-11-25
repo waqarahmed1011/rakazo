@@ -866,7 +866,7 @@ describe("shared space bot permissions", () => {
     ).rejects.toMatchObject({ code: "FORBIDDEN" });
     expect(prisma.spaceMember.findUnique).toHaveBeenCalledWith({
       where: { spaceId_userId: { spaceId: "space-1", userId: "user-1" } },
-      select: { role: true },
+      select: { role: true, member: { select: { role: true } } },
     });
   });
 

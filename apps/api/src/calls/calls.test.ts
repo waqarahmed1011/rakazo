@@ -2,7 +2,7 @@ import { createRouterClient } from "@orpc/server";
 import type { Actor } from "@rakazo/contracts";
 import { describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "../router.js";
-import { createRouter } from "../router.js";
+import { createRouter } from "../router-test-support.js";
 
 const actor: Actor = {
   spaceId: "space-1",
@@ -20,7 +20,14 @@ describe("call route gates", () => {
       });
       const client = createRouterClient(
         createRouter({
-          prisma: new Proxy({}, { get: () => query }),
+          // No per-bot access rows; every other table answers the same failing query.
+          prisma: new Proxy(
+            {},
+            {
+              get: (_target, key) =>
+                key === "botAccess" ? { findUnique: async () => null } : query,
+            },
+          ),
           env: { phoneCallsEnabled },
         } as unknown as RouterDeps),
         { context: { actor } },

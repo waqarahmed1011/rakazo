@@ -52,10 +52,14 @@ import type { Prisma } from "@rakazo/db";
 import {
   botProfileLabelsChanged,
   commitBotUpdate,
+  hiddenBotIds,
   IsolationError,
   isRecordNotFound,
+  isSpaceManager,
+  managesBot,
   recordSecurityEvent,
   restoreBotUnderComputerQuota,
+  setBotAccess,
   settingsTarget,
   syncTagGroups,
   THREAD_LOCK_TRANSACTION_OPTIONS,
@@ -337,7 +341,13 @@ export function botsRoutes(ctx: RouterContext) {
     ctx;
   return {
     bots: {
-      list: authed.bots.list.handler(async ({ context }) => repos.listBots(context.actor)),
+      list: authed.bots.list.handler(async ({ context }) => {
+        const [bots, hidden] = await Promise.all([
+          repos.listBots(context.actor),
+          hiddenBotIds(deps.prisma, context.actor.userId),
+        ]);
+        return bots.filter((bot) => !hidden.has(bot.id));
+      }),
       listArchived: authed.bots.listArchived.handler(async ({ context }) =>
         repos.listBots(context.actor, { archived: true }),
       ),
@@ -420,6 +430,51 @@ export function botsRoutes(ctx: RouterContext) {
       }),
       reorderChats: authed.bots.reorderChats.handler(async ({ context, input }) => {
         await repos.reorderChats(context.actor, input.chats);
+        return { ok: true as const };
+      }),
+      access: authed.bots.access.handler(async ({ context, input }) => {
+        if (!(await managesBot(deps.prisma, context.actor, input.botId)))
+          throw new IsolationError();
+        const [bot, members, rows] = await Promise.all([
+          deps.prisma.bot.findFirst({
+            where: { id: input.botId, spaceId: context.actor.spaceId },
+            select: { userId: true },
+          }),
+          deps.prisma.spaceMember.findMany({
+            where: { spaceId: context.actor.spaceId },
+            select: {
+              userId: true,
+              role: true,
+              member: { select: { role: true, user: { select: { name: true, email: true } } } },
+            },
+          }),
+          deps.prisma.botAccess.findMany({
+            where: { botId: input.botId, spaceId: context.actor.spaceId },
+            select: { userId: true, level: true },
+          }),
+        ]);
+        const levels = new Map(rows.map((row) => [row.userId, row.level]));
+        return Promise.all(
+          members.map(async (member) => {
+            const fixed =
+              member.userId === bot?.userId ||
+              (await isSpaceManager(deps.prisma, {
+                spaceId: context.actor.spaceId,
+                userId: member.userId,
+              }));
+            const saved = levels.get(member.userId);
+            return {
+              userId: member.userId,
+              name: member.member.user.name,
+              email: member.member.user.email,
+              level: fixed || !saved ? ("edit" as const) : (saved as "hidden" | "chat"),
+              fixed,
+            };
+          }),
+        );
+      }),
+      setAccess: authed.bots.setAccess.handler(async ({ context, input }) => {
+        await setBotAccess(deps.prisma, context.actor, input);
         return { ok: true as const };
       }),
       setMinutesSaved: authed.bots.setMinutesSaved.handler(async ({ context, input }) => {

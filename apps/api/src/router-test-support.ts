@@ -17,6 +17,10 @@ export {
 
 const withRoleDeps = (deps: RouterDeps) => {
   withModelRoles(deps.prisma);
+  // No per-bot access rows unless a test sets some: every member edits every bot.
+  const prisma = deps.prisma as unknown as Record<string, Record<string, unknown>> | undefined;
+  if (prisma && typeof prisma.botAccess?.findUnique !== "function")
+    prisma.botAccess = { findUnique: async () => null, findMany: async () => [] };
   return deps;
 };
 export const createRouter = (deps: RouterDeps) => createRouterWith(withRoleDeps(deps));

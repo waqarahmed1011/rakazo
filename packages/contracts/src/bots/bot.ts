@@ -157,6 +157,24 @@ export const SetBotMinutesSavedInput = z.object({
 });
 export type SetBotMinutesSavedInput = z.infer<typeof SetBotMinutesSavedInput>;
 
+/** Hidden: the bot does not appear for them. Chat: they talk to it but cannot change it. */
+export const BotAccessLevelSchema = z.enum(["hidden", "chat", "edit"]);
+export type BotAccessLevel = z.infer<typeof BotAccessLevelSchema>;
+export const BotAccessEntrySchema = z.object({
+  userId: Id,
+  name: z.string(),
+  email: z.string(),
+  level: BotAccessLevelSchema,
+  /** Space admins and the bot's creator always edit. */
+  fixed: z.boolean(),
+});
+export type BotAccessEntry = z.infer<typeof BotAccessEntrySchema>;
+export const SetBotAccessInput = z.object({
+  botId: Id,
+  userId: Id,
+  level: BotAccessLevelSchema,
+});
+
 export const BOT_SECTION_NAME_MAX_LENGTH = 60;
 export const BotSectionName = z.string().trim().min(1).max(BOT_SECTION_NAME_MAX_LENGTH);
 

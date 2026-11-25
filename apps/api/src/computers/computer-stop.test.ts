@@ -14,7 +14,7 @@ import type * as Db from "@rakazo/db";
 import type { PrismaClient } from "@rakazo/db";
 import { describe, expect, it, vi } from "vitest";
 import type { RouterDeps } from "../router.js";
-import { createRouter } from "../router.js";
+import { createRouter } from "../router-test-support.js";
 
 // The plan's size is read from billing, which these Prisma doubles do not model.
 vi.mock("@rakazo/db", async (importOriginal) => ({

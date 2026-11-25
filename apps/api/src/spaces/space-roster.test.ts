@@ -2,7 +2,7 @@ import { RPCHandler } from "@orpc/server/fetch";
 import type { Actor, Bot, SpaceNavigation } from "@rakazo/contracts";
 import { expect, it, vi } from "vitest";
 import type { RouterDeps } from "../router.js";
-import { createRouter } from "../router.js";
+import { createRouter } from "../router-test-support.js";
 
 const actor: Actor = {
   userId: "user-1",

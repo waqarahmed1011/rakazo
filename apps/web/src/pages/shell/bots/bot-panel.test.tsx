@@ -117,6 +117,7 @@ vi.mock("@rakazo/ui-web", async (importOriginal) => {
 });
 vi.mock("../../../components/pages/PagesList", () => ({ PagesList: () => null }));
 vi.mock("./bot-tags", () => ({ BotTagsSection: () => null }));
+vi.mock("./bot-access", () => ({ BotAccessSection: () => null }));
 vi.mock("./bot-run-limit", () => ({
   BotRunLimitSection: () => null,
   BotMinutesSavedSection: () => null,

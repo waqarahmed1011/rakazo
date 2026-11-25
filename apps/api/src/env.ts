@@ -9,8 +9,8 @@ import type {
 import {
   absoluteHttpOrigin,
   apnsVoipConfig,
-  browserPushKeys,
   autoReviewMinConfidence,
+  browserPushKeys,
   deploymentLabsFromEnv,
   inboundOrigin,
   liveModelCatalogEnabled,

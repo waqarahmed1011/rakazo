@@ -1033,6 +1033,10 @@ describe("adapter refusals answered by type", () => {
       call(
         {
           prisma: {
+            // The caller is the space's owner, so a shared document saves directly.
+            spaceMember: {
+              findUnique: vi.fn(async () => ({ role: "owner", member: { role: "owner" } })),
+            },
             memoryDocument: {
               findFirst: vi.fn().mockResolvedValue({ id: "doc-1", scope: "user", path: "a.md" }),
             },
@@ -1280,8 +1284,12 @@ describe("memory documents", () => {
   ) {
     const memoryDocument = { findFirst: vi.fn(async () => doc) };
     const memory = { remove: vi.fn(async () => ({ removed: true })) };
+    // The caller owns the space, so shared documents change directly rather than as suggestions.
+    const spaceMember = {
+      findUnique: vi.fn(async () => ({ role: "owner", member: { role: "owner" } })),
+    };
     const deps = {
-      prisma: { memoryDocument },
+      prisma: { memoryDocument, spaceMember },
       memory,
       env: { webOrigin: "https://example.test" },
     } as unknown as RouterDeps;

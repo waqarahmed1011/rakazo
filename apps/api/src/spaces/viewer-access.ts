@@ -77,15 +77,33 @@ const SHARED_FAMILIES: ReadonlyArray<{ prefix: string; reads: ReadonlySet<string
 const READ_VERB =
   /^(get|list|read|search|subscribe|preview|status|stream|count|catalog|describe|show|find|lookup|check|history|summary|usage|health|options|available|members|events|threads|detail|load|current|config)/;
 
-/** Whether a member with this space role may call this procedure. */
-export function spaceRoleMayCall(role: string | undefined, path: readonly string[]): boolean {
-  if (role !== SPACE_VIEWER_ROLE) return true;
+export class BotReadOnlyError extends ClientError {
+  constructor() {
+    super("FORBIDDEN", "You can chat with this bot but not change it");
+    this.name = "BotReadOnlyError";
+  }
+}
+
+/** Whether this procedure changes something the space shares, which read-only access forbids. */
+export function isSharedWrite(path: readonly string[]): boolean {
   const name = path.join(".");
-  if (SHARED_WRITES.has(name)) return false;
+  if (SHARED_WRITES.has(name)) return true;
   const last = path.at(-1) ?? "";
   for (const family of SHARED_FAMILIES) {
     if (!name.startsWith(family.prefix)) continue;
-    return READ_VERB.test(last) || family.reads.has(last);
+    return !(READ_VERB.test(last) || family.reads.has(last));
   }
-  return true;
+  return false;
+}
+
+/** Whether a member with this space role may call this procedure. */
+export function spaceRoleMayCall(role: string | undefined, path: readonly string[]): boolean {
+  return role !== SPACE_VIEWER_ROLE || !isSharedWrite(path);
+}
+
+/** The bot a call acts on, when its input names one. */
+export function botTargetOf(input: unknown): string | undefined {
+  if (!input || typeof input !== "object") return undefined;
+  const botId = (input as { botId?: unknown }).botId;
+  return typeof botId === "string" && botId ? botId : undefined;
 }

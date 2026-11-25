@@ -2,7 +2,7 @@ import { createRouterClient } from "@orpc/server";
 import type { Actor } from "@rakazo/contracts";
 import { beforeEach, expect, it, vi } from "vitest";
 import type { RouterDeps } from "../router.js";
-import { createRouter } from "../router.js";
+import { createRouter } from "../router-test-support.js";
 import { reactToThreadMessage } from "../threads/thread-reactions.js";
 
 vi.mock("../threads/thread-target.js", async (original) => ({

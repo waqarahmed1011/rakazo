@@ -55,7 +55,14 @@ import {
   modelSupportsRole,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@rakazo/contracts";
-import { createGroupRepos, createRepos, recordSecurityEvent, runAsTenant } from "@rakazo/db";
+import {
+  botAccessLevel,
+  createGroupRepos,
+  createRepos,
+  IsolationError,
+  recordSecurityEvent,
+  runAsTenant,
+} from "@rakazo/db";
 import { bestEffort } from "@rakazo/logging";
 import { procedureSecurityEvent } from "../auth/security-audit.js";
 import { createAgentImportServices } from "../bots/agent-import-services.js";
@@ -68,7 +75,13 @@ import { createModelConnector, prepareAllowedThinkingLevels } from "../models/mo
 import type { RouterDeps } from "../router.js";
 import { createRoutineAnnouncer } from "../routines/routines.js";
 import { spaceChangesFor } from "../spaces/space-change-procedures.js";
-import { SpaceReadOnlyError, spaceRoleMayCall } from "../spaces/viewer-access.js";
+import {
+  BotReadOnlyError,
+  botTargetOf,
+  isSharedWrite,
+  SpaceReadOnlyError,
+  spaceRoleMayCall,
+} from "../spaces/viewer-access.js";
 import {
   ModelCreditOfferingUnavailableError,
   UnsupportedThinkingLevelError,
@@ -625,6 +638,13 @@ export function createRouterContext(deps: RouterDeps) {
 
   const authed = os.use(signedIn).use(async ({ context, next, path }, input) => {
     if (!spaceRoleMayCall(context.actor.spaceRole, path)) throw new SpaceReadOnlyError();
+    // A bot set to Hidden for this member does not exist for them; Chat lets them talk to it only.
+    const botId = botTargetOf(input);
+    if (botId) {
+      const level = await botAccessLevel(deps.prisma, context.actor, botId);
+      if (level === "hidden") throw new IsolationError();
+      if (level === "chat" && isSharedWrite(path)) throw new BotReadOnlyError();
+    }
     const result = await next();
     const event = procedureSecurityEvent(path, input, context.actor);
     if (event) await recordSecurityEvent(event);

@@ -12,6 +12,7 @@ import {
   createSpaceInvite,
   fallbackSpaceForMember,
   GUEST_ROLE,
+  hiddenBotIds,
   homeOrganizationId,
   IsolationError,
   isOwnerRole,
@@ -380,9 +381,21 @@ function spaceNavigationDto(
   repos: ReturnType<typeof createRepos>,
   groupRepos: ReturnType<typeof createGroupRepos>,
 ): Promise<SpaceNavigation> {
-  return runAsSystem("space navigation across the member's Spaces", () =>
-    memberSpaceNavigation(deps, actor, repos, groupRepos),
-  );
+  return runAsSystem("space navigation across the member's Spaces", async () => {
+    const [navigation, hidden] = await Promise.all([
+      memberSpaceNavigation(deps, actor, repos, groupRepos),
+      hiddenBotIds(deps.prisma, actor.userId),
+    ]);
+    // Bots set to Hidden for this member are left out of their list.
+    if (hidden.size === 0) return navigation;
+    return {
+      ...navigation,
+      current: {
+        ...navigation.current,
+        bots: navigation.current.bots.filter((bot) => !hidden.has(bot.id)),
+      },
+    };
+  });
 }
 
 async function memberSpaceNavigation(

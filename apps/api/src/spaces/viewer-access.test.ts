@@ -1,6 +1,6 @@
 import { appContract } from "@rakazo/contracts";
 import { describe, expect, it } from "vitest";
-import { spaceRoleMayCall } from "./viewer-access.js";
+import { botTargetOf, isSharedWrite, spaceRoleMayCall } from "./viewer-access.js";
 
 function procedurePaths(node: unknown, path: string[] = []): string[][] {
   if (!node || typeof node !== "object") return [];
@@ -57,5 +57,20 @@ describe("spaceRoleMayCall", () => {
       expect(paths.map((path) => path.join("."))).toContain(name);
       expect(allowed(name), name).toBe(true);
     }
+  });
+});
+
+describe("per-bot read-only access", () => {
+  it("treats bot changes as shared writes and chatting as allowed", () => {
+    expect(isSharedWrite(["bots", "update"])).toBe(true);
+    expect(isSharedWrite(["routines", "create"])).toBe(true);
+    expect(isSharedWrite(["threads", "send"])).toBe(false);
+    expect(isSharedWrite(["bots", "list"])).toBe(false);
+  });
+
+  it("finds the bot a call names", () => {
+    expect(botTargetOf({ botId: "bot-1", text: "hi" })).toBe("bot-1");
+    expect(botTargetOf({ groupId: "group-1" })).toBeUndefined();
+    expect(botTargetOf(undefined)).toBeUndefined();
   });
 });

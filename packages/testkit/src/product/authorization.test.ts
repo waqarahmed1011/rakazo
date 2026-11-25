@@ -355,6 +355,8 @@ describeWithDatabase("API authorization and resource isolation", () => {
       ["bots/setTags", { botId: "missing-bot", tags: [] }],
       ["bots/setDailyRunLimit", { botId: "missing-bot", limit: 10 }],
       ["bots/setMinutesSaved", { botId: "missing-bot", minutes: 10 }],
+      ["bots/access", { botId: "missing-bot" }],
+      ["bots/setAccess", { botId: "missing-bot", userId: "missing-user", level: "chat" }],
       ["bots/restoreInstructions"],
       ["bots/setComputer"],
       ["bots/rotateWebhookSecret"],
