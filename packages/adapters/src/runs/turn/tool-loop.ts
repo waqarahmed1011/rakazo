@@ -48,8 +48,10 @@ export function overLimitStopText(toolName: string, count: number): string {
 }
 
 export function isLoopGuardStopText(text: string): boolean {
-  return LOOP_GUARD_STOP_PATTERN.test(text);
+  return LOOP_GUARD_STOP_PATTERN.test(text) || ACCESS_DENIED_STOP_PATTERN.test(text);
 }
+
+const ACCESS_DENIED_STOP_PATTERN = /^I stopped: .+ was refused access \d+ times in this reply /;
 
 // Same tool, same arguments, failing this many times in a row means the agent is stuck.
 const MAX_CONSECUTIVE_IDENTICAL_TOOL_CALLS = 6;
@@ -196,4 +198,67 @@ function sameResultRun(
   if (streak.sameResult !== undefined && streak.sameResult !== previousResult)
     return { sameResult: previousResult, sameResultCount: 2 };
   return { sameResult: previousResult, sameResultCount: (streak.sameResultCount ?? 0) + 1 };
+}
+
+/** Refused-access answers in one run that end it: one retry is fair, a third try is a loop. */
+export const MAX_ACCESS_DENIALS_PER_RUN = 2;
+
+// Only the start of an answer is read, so a long page that mentions a status code in passing
+// (an article about HTTP, a log further down) is not mistaken for a refusal.
+const ACCESS_DENIAL_SCAN_CHARS = 2_000;
+const ACCESS_DENIAL_PATTERNS: readonly RegExp[] = [
+  /\b(401|403)\s*[-:]?\s*(unauthori[sz]ed|forbidden)\b/i,
+  /\b(?:HTTP\/\d(?:\.\d)?|status(?:[\s_-]?code)?)["']?\s*[:=]?\s*(401|403)\b/i,
+  /\b(?:invalid|missing|expired|revoked|incorrect)\s+(?:api[\s_-]?key|access[\s_-]?token|token|credentials?)\b/i,
+  /\b(?:insufficient|missing)\s+(?:scopes?|permissions?)\b/i,
+  /\blacks?\s+(?:the\s+)?[\w.:-]+\s+(?:scope|permission)\b/i,
+  /\b(?:not authori[sz]ed|access denied|permission_denied)\b/i,
+];
+
+function resultText(result: unknown, error?: unknown): string {
+  const parts: string[] = [];
+  if (error !== undefined) parts.push(error instanceof Error ? error.message : String(error));
+  const failure = toolResultError(result);
+  if (typeof failure === "string") parts.push(failure);
+  const content = (result as { content?: unknown } | null)?.content;
+  if (Array.isArray(content)) {
+    for (const part of content) {
+      const text = (part as { text?: unknown } | null)?.text;
+      if (typeof text === "string") parts.push(text);
+    }
+  } else if (typeof result === "string") {
+    parts.push(result);
+  }
+  return parts.join("\n").slice(0, ACCESS_DENIAL_SCAN_CHARS);
+}
+
+/**
+ * The matched words when a tool's answer says access was refused (a 401 or 403, a bad key, a
+ * missing scope), whether the tool failed or a script it ran printed the refusal. A key without
+ * permission stays without it, so retrying another way only spends the run.
+ */
+export function accessDenial(result: unknown, error?: unknown): string | undefined {
+  const text = resultText(result, error);
+  if (!text) return undefined;
+  for (const pattern of ACCESS_DENIAL_PATTERNS) {
+    const match = pattern.exec(text);
+    if (match) return match[0].trim().slice(0, 80);
+  }
+  return undefined;
+}
+
+export function accessDeniedStopText(toolName: string, denial: string, count: number): string {
+  return `I stopped: ${toolName} was refused access ${count} times in this reply ("${denial}"). Trying again another way won't fix a missing key or permission. Check that app's connection or key, then ask me again.`;
+}
+
+/** Adds a refused-access answer to the run's count; other answers leave it as it was. */
+export function countAccessDenial(
+  current: { count: number; last: string; tool: string } | undefined,
+  tool: string,
+  result: unknown,
+  error?: unknown,
+): { count: number; last: string; tool: string } | undefined {
+  const denial = accessDenial(result, error);
+  if (!denial) return current;
+  return { count: (current?.count ?? 0) + 1, last: denial, tool };
 }

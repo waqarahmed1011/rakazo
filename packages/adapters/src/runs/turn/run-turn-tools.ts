@@ -28,10 +28,13 @@ import {
   toolCompletionOutcome,
 } from "./tool-completion-audit.js";
 import {
+  accessDeniedStopText,
   advanceOverLimitActionCalls,
   advanceToolCallLoopGuard,
+  countAccessDenial,
   loopGuardStop,
   loopGuardStopText,
+  MAX_ACCESS_DENIALS_PER_RUN,
   MAX_CONSECUTIVE_OVER_LIMIT_ACTION_CALLS,
   overLimitStopText,
   toolResultFingerprint,
@@ -125,6 +128,15 @@ export async function onToolCalled(ctx: RunContext, event: RuntimeEvent<"tool">)
     event.name,
     event.args,
   );
+  // Access refused twice: the key or permission is missing, and another try won't add it.
+  const denials = ctx.state.accessDenials;
+  if (denials && denials.count >= MAX_ACCESS_DENIALS_PER_RUN) {
+    await stopStuckToolLoop(ctx, denials.tool, undefined, {
+      text: accessDeniedStopText(humanizeToolName(denials.tool), denials.last, denials.count),
+      count: denials.count,
+    });
+    return true;
+  }
   if (
     loopGuard.stuck ||
     ctx.state.overLimitActionCalls >= MAX_CONSECUTIVE_OVER_LIMIT_ACTION_CALLS
@@ -139,6 +151,7 @@ export async function onToolCalled(ctx: RunContext, event: RuntimeEvent<"tool">)
   try {
     const result = await applyTool(ctx, event.name, event.args, event.executionId);
     toolResults.set(event.executionId, toolResultFingerprint(result));
+    ctx.state.accessDenials = countAccessDenial(ctx.state.accessDenials, event.name, result);
     const completion = toolCompletionFromResult(
       { name: event.name, executionId: event.executionId, durationMs: Date.now() - startedAt },
       result,
@@ -166,7 +179,12 @@ export async function onToolCalled(ctx: RunContext, event: RuntimeEvent<"tool">)
 }
 
 /** The model keeps repeating the same call: finish the run with what it has and say why. */
-async function stopStuckToolLoop(ctx: RunContext, toolName: string, refusal?: ToolRefusal) {
+async function stopStuckToolLoop(
+  ctx: RunContext,
+  toolName: string,
+  refusal?: ToolRefusal,
+  accessDenied?: { text: string; count: number },
+) {
   const { deps, run, runId, bot, thread, workerId, fence } = ctx;
   const { reply } = ctx.state;
   // Otherwise the model keeps calling tools while the stop is saved. The run's own signal stays
@@ -185,8 +203,9 @@ async function stopStuckToolLoop(ctx: RunContext, toolName: string, refusal?: To
   ctx.state.terminalCheckpointComplete = true;
   const overLimit = ctx.state.overLimitActionCalls;
   const humanName = humanizeToolName(toolName);
-  const stuckText =
-    overLimit >= MAX_CONSECUTIVE_OVER_LIMIT_ACTION_CALLS
+  const stuckText = accessDenied
+    ? accessDenied.text
+    : overLimit >= MAX_CONSECUTIVE_OVER_LIMIT_ACTION_CALLS
       ? overLimitStopText(humanName, overLimit)
       : loopGuardStopText(humanName, ctx.state.toolCallStreak);
   await ctx.settleRunningHelpers();
@@ -217,12 +236,14 @@ async function stopStuckToolLoop(ctx: RunContext, toolName: string, refusal?: To
     },
     {
       tool: toolName,
-      reason: stoppedForOverLimit
-        ? "over_limit_actions"
-        : loop.kind === "same_result"
-          ? "repeated_results"
-          : "repeated_calls",
-      count: stoppedForOverLimit ? overLimit : loop.count,
+      reason: accessDenied
+        ? "access_denied"
+        : stoppedForOverLimit
+          ? "over_limit_actions"
+          : loop.kind === "same_result"
+            ? "repeated_results"
+            : "repeated_calls",
+      count: accessDenied ? accessDenied.count : stoppedForOverLimit ? overLimit : loop.count,
       failures: ctx.state.toolCallStreak.failures ?? 0,
       ...(refusal ? { refusal } : {}),
     },

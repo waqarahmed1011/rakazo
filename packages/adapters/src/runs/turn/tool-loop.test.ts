@@ -2,11 +2,15 @@ import { describe, expect, it } from "vitest";
 import { observationToolResult } from "../../computers/screens/computer-tools.js";
 import type { LoopGuardStreak } from "./tool-loop.js";
 import {
+  accessDenial,
+  accessDeniedStopText,
   advanceOverLimitActionCalls,
   advanceToolCallLoopGuard,
+  countAccessDenial,
   isLoopGuardStopText,
   loopGuardStop,
   loopGuardStopText,
+  MAX_ACCESS_DENIALS_PER_RUN,
   MAX_CONSECUTIVE_OVER_LIMIT_ACTION_CALLS,
   overLimitStopText,
   toolCallStreakLength,
@@ -572,5 +576,39 @@ describe("overLimitStopText", () => {
     expect(text).toContain("with too many actions 4 times in a row");
     expect(text).not.toContain("same input");
     expect(isLoopGuardStopText(text)).toBe(true);
+  });
+});
+
+describe("access denials", () => {
+  const text = (value: string) => ({ content: [{ type: "text", text: value }] });
+
+  it("spots a refusal a script printed, not just a failed tool", () => {
+    expect(
+      accessDenial(
+        text('curl exited 0\n{"name":"ForbiddenError","message":"lacks the inbox_read scope"}'),
+      ),
+    ).toBe("lacks the inbox_read scope");
+    expect(accessDenial(text("HTTP/1.1 403 Forbidden"))).toBeDefined();
+    expect(accessDenial(undefined, new Error("401 Unauthorized"))).toBeDefined();
+    expect(accessDenial(text('{"status": 403}'))).toBeDefined();
+    expect(accessDenial(text("Invalid API key provided"))).toBeDefined();
+  });
+
+  it("leaves ordinary answers alone", () => {
+    expect(accessDenial(text("3 new emails since 9 AM"))).toBeUndefined();
+    expect(accessDenial(text("Invoice 403 is due Friday"))).toBeUndefined();
+    expect(accessDenial(text(`${"x".repeat(2_100)} 403 Forbidden`))).toBeUndefined();
+  });
+
+  it("counts refusals across a run and names the latest", () => {
+    let count = countAccessDenial(undefined, "shell", text("403 Forbidden"));
+    count = countAccessDenial(count, "write_file", text("saved"));
+    count = countAccessDenial(count, "shell", text("missing scope"));
+    expect(count).toEqual({ count: 2, last: "missing scope", tool: "shell" });
+    expect(count!.count).toBeGreaterThanOrEqual(MAX_ACCESS_DENIALS_PER_RUN);
+  });
+
+  it("is a loop-guard stop for delegated runs", () => {
+    expect(isLoopGuardStopText(accessDeniedStopText("Shell", "403 Forbidden", 2))).toBe(true);
   });
 });

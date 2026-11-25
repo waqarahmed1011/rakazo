@@ -211,6 +211,8 @@ export interface RunState {
   toolRefusals?: Map<string, ToolRefusal>;
   /** Consecutive `computer_act`/`browser_act` batches over the action limit, this one included. */
   overLimitActionCalls: number;
+  /** Tool answers this run that said access was refused, and the words of the latest one. */
+  accessDenials?: { count: number; last: string; tool: string };
   /**
    * Whether outside content has entered the run. A run someone else started begins tainted,
    * and so does a later attempt, including one with restored untrusted tool results. It only

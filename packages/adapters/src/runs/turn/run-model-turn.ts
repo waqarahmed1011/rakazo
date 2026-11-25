@@ -27,7 +27,7 @@ import { applyTool } from "../tools/run-tools.js";
 import { consumeRunEvents } from "./run-turn.js";
 import { claimRunSteering } from "./run-turn-images.js";
 import { appendToolCompletionAudit, toolCompletionOutcome } from "./tool-completion-audit.js";
-import { toolResultFingerprint } from "./tool-loop.js";
+import { countAccessDenial, toolResultFingerprint } from "./tool-loop.js";
 import { keepToolStepResult } from "./tool-step-calls.js";
 
 export async function runModelTurn(
@@ -364,6 +364,12 @@ function modelTurnRequest(
       state.toolResults.set(
         completion.executionId,
         toolResultFingerprint(completion.result, completion.error),
+      );
+      state.accessDenials = countAccessDenial(
+        state.accessDenials,
+        completion.name,
+        completion.result,
+        completion.error,
       );
       return audited;
     },
