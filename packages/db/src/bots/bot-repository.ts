@@ -110,6 +110,7 @@ function mapBot(
     spawnKey?: string | null;
     tags?: string[];
     dailyRunLimit?: number | null;
+    minutesSavedPerRun?: number | null;
   },
   preview = "",
   status = "idle",
@@ -135,6 +136,7 @@ function mapBot(
     sectionId: bot.sectionId,
     ...(bot.tags ? { tags: bot.tags } : {}),
     ...(bot.dailyRunLimit !== undefined ? { dailyRunLimit: bot.dailyRunLimit } : {}),
+    ...(bot.minutesSavedPerRun !== undefined ? { minutesSavedPerRun: bot.minutesSavedPerRun } : {}),
     archivedAt: bot.archivedAt?.toISOString() ?? null,
     unread: unreadFor(bot.thread),
     snoozedUntil: snoozedUntilFor(bot.thread),
@@ -739,6 +741,14 @@ export function createRepos(
       const { count } = await prisma.bot.updateMany({
         where: { id: botId, spaceId: actor.spaceId, archivedAt: null },
         data: { tags: normalizeBotTags(tags) },
+      });
+      if (count === 0) throw new IsolationError();
+    },
+
+    async setMinutesSaved(actor: Actor, botId: string, minutes: number | null): Promise<void> {
+      const { count } = await prisma.bot.updateMany({
+        where: { id: botId, spaceId: actor.spaceId, archivedAt: null },
+        data: { minutesSavedPerRun: minutes },
       });
       if (count === 0) throw new IsolationError();
     },

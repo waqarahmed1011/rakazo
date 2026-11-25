@@ -781,6 +781,7 @@ model Space {
   @@map("spaces")
   messagingInstallations MessagingInstallation[]
   messagingInstallSessions MessagingInstallSession[]
+  approvalWaits               ApprovalWait[]
 }
 
 /// A space's data encryption key, wrapped by a master key. There is no foreign key:
@@ -1070,6 +1071,8 @@ model Bot {
   tags              String[]          @default([])
   /// Runs the bot may start on its own per 24 hours; null is the default, 0 is no limit.
   dailyRunLimit     Int?
+  /// Minutes of a person's work one finished run stands in for; the dashboard's hours-saved estimate.
+  minutesSavedPerRun Int?
   section           BotSection?       @relation(fields: [sectionId], references: [id], onDelete: SetNull)
   archivedAt        DateTime?
   parentBotId       String?
@@ -1608,6 +1611,21 @@ model NativeCalendarRequest {
   @@index([runId])
   @@index([userId])
   @@map("native_calendar_requests")
+}
+
+/// One question or approval a person answered: when the bot asked and when they answered.
+model ApprovalWait {
+  id         String   @id @default(cuid())
+  spaceId    String
+  space      Space    @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  botId      String
+  userId     String
+  approval   Boolean
+  askedAt    DateTime
+  answeredAt DateTime @default(now())
+
+  @@index([spaceId, answeredAt])
+  @@map("approval_waits")
 }
 
 model ExternalEffect {

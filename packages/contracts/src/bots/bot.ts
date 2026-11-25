@@ -52,6 +52,8 @@ export const BotSchema = z.object({
   tags: z.array(z.string()).optional(),
   /** Runs it may start on its own per 24 hours; null is the default, 0 is no limit. */
   dailyRunLimit: z.number().int().nonnegative().nullable().optional(),
+  /** Minutes of work one finished run saves; null uses the default. */
+  minutesSavedPerRun: z.number().int().nonnegative().nullable().optional(),
   archivedAt: z.string().nullable(),
   unread: z.boolean(),
   /** Hidden from the viewer's chat list until then; past, the chat has just woken. */
@@ -146,6 +148,14 @@ export const SetBotDailyRunLimitInput = z.object({
   limit: z.number().int().min(0).max(BOT_DAILY_RUN_LIMIT_MAX).nullable(),
 });
 export type SetBotDailyRunLimitInput = z.infer<typeof SetBotDailyRunLimitInput>;
+
+/** What one finished run is assumed to save when a bot's settings name nothing. */
+export const DEFAULT_MINUTES_SAVED_PER_RUN = 10;
+export const SetBotMinutesSavedInput = z.object({
+  botId: Id,
+  minutes: z.number().int().min(0).max(480).nullable(),
+});
+export type SetBotMinutesSavedInput = z.infer<typeof SetBotMinutesSavedInput>;
 
 export const BOT_SECTION_NAME_MAX_LENGTH = 60;
 export const BotSectionName = z.string().trim().min(1).max(BOT_SECTION_NAME_MAX_LENGTH);

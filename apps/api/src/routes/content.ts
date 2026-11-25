@@ -10,6 +10,7 @@ import {
 } from "@rakazo/core";
 import { IsolationError, LISTED_ARTIFACT, Prisma, parseComputerMode } from "@rakazo/db";
 import { requireIdentityConfirmation } from "../auth/identity-confirmation.js";
+import { teamActivity } from "../billing/team-activity.js";
 import {
   createOwnedArtifact,
   deleteArtifactFamily,
@@ -234,6 +235,9 @@ export function contentRoutes(ctx: RouterContext) {
             ),
         };
       }),
+      team: authed.usage.team.handler(({ context, input }) =>
+        teamActivity(deps.prisma, context.actor, input.days),
+      ),
       breakdown: authed.usage.breakdown.handler(async ({ context, input }) => {
         const where = {
           spaceId: context.actor.spaceId,

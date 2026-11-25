@@ -119,6 +119,36 @@ export const UsageBreakdownSchema = z.object({
 });
 export type UsageBreakdown = z.infer<typeof UsageBreakdownSchema>;
 
+export const TeamActivityInputSchema = z.object({ days: z.union([z.literal(7), z.literal(30)]) });
+export type TeamActivityInput = z.infer<typeof TeamActivityInputSchema>;
+
+const ActivityCountsSchema = z.object({
+  runs: z.number(),
+  failed: z.number(),
+  completed: z.number(),
+  costUsd: z.number().nullable(),
+  minutesSaved: z.number(),
+});
+
+/** The whole space's bot activity over a window and the window before it, for space admins. */
+export const TeamActivitySchema = z.object({
+  days: z.number(),
+  current: ActivityCountsSchema,
+  previous: ActivityCountsSchema,
+  bots: z.array(
+    ActivityCountsSchema.extend({ botId: Id, previousRuns: z.number(), minutesPerRun: z.number() }),
+  ),
+  /** Requests each person sent each bot, busiest first. */
+  people: z.array(z.object({ userId: Id, name: z.string(), botId: Id, requests: z.number() })),
+  /** Questions and approvals people answered: how many, and minutes from asked to answered. */
+  answers: z.object({
+    count: z.number(),
+    medianMinutes: z.number().nullable(),
+    slowestMinutes: z.number().nullable(),
+  }),
+});
+export type TeamActivity = z.infer<typeof TeamActivitySchema>;
+
 /** One rolling allowance of a model subscription the member signed in with. */
 export const PlanLimitWindowSchema = z.object({
   period: z.enum(["session", "week", "month"]),

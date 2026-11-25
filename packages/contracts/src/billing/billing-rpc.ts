@@ -18,6 +18,8 @@ import {
 } from "./payments.js";
 import {
   PlanLimitsSchema,
+  TeamActivityInputSchema,
+  TeamActivitySchema,
   UsageBreakdownInputSchema,
   UsageBreakdownSchema,
   UsageRecordSchema,
@@ -108,6 +110,8 @@ export const billingRpc = {
     list: oc.output(z.array(UsageRecordSchema)),
     summary: oc.output(UsageSummarySchema),
     breakdown: oc.input(UsageBreakdownInputSchema).output(UsageBreakdownSchema),
+    /** Space admins only: every member's bot activity, with hours saved and answer times. */
+    team: oc.input(TeamActivityInputSchema).output(TeamActivitySchema),
     /** Subscription sign-ins whose allowance could be read; others are left out. */
     limits: oc.output(z.array(PlanLimitsSchema)),
   },

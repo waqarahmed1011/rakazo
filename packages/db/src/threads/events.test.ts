@@ -110,6 +110,7 @@ describe("finalizeRun", () => {
       const conflict = Object.assign(new Error("serialization conflict"), { code: "P2034" });
       const createEvent = vi.fn(async () => ({ threadId: "thread-1", seq: 0 }));
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
         $queryRaw: vi.fn(async () => []),
         run: {
@@ -179,6 +180,7 @@ describe("finalizeRun", () => {
 
   it("saves the reply a failure cut short before the error, as no answer to steering", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $executeRaw: vi.fn(async () => 0),
       externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: vi.fn(async () => []),
@@ -255,6 +257,7 @@ describe("finalizeRun", () => {
   it("saves no message for a failure without a partial reply", async () => {
     const create = vi.fn();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: vi.fn(async () => []),
       run: {
@@ -299,6 +302,7 @@ describe("finalizeRun", () => {
 
   it("resumes a held messaging inbound as a messaging run", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: vi.fn(async () => []),
       run: {
@@ -367,6 +371,7 @@ describe("finalizeRun", () => {
 
   it("pins the continuation when every waited message chose the same model", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: vi.fn(async () => []),
       run: {
@@ -447,6 +452,7 @@ describe("finalizeRun", () => {
       text: "What is the status?",
     };
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: vi.fn(async () => []),
       run: {
@@ -546,6 +552,7 @@ describe("thread lock transaction budget", () => {
 
   it("clears a thread with the explicit budget", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       $executeRaw: vi.fn(async () => 0),
       threadRead: {
@@ -602,6 +609,7 @@ describe("thread lock transaction budget", () => {
 
   it("pauses a run for input with the explicit budget", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([]),
       run: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       computerExecutionLease: { updateMany: vi.fn() },
@@ -626,6 +634,7 @@ describe("thread lock transaction budget", () => {
 
   it("answers a card with the explicit budget", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([]),
       run: { findFirst: vi.fn().mockResolvedValue(null) },
     };
@@ -647,6 +656,7 @@ describe("thread lock transaction budget", () => {
 
   it("claims steering with the explicit budget", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([]),
       run: { findFirst: vi.fn().mockResolvedValue(null) },
     };
@@ -668,6 +678,7 @@ describe("thread lock transaction budget", () => {
 
   it("pauses a run for takeover with the explicit budget", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([]),
       run: {
         findUnique: vi.fn().mockResolvedValue(null),
@@ -694,6 +705,7 @@ describe("thread lock transaction budget", () => {
 
   it("answers a takeover request with the explicit budget", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([]),
       run: { findFirst: vi.fn().mockResolvedValue(null) },
     };
@@ -713,6 +725,7 @@ describe("thread lock transaction budget", () => {
 
   it("settles released takeover cards with the explicit budget", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([]),
       message: { findMany: vi.fn().mockResolvedValue([]) },
     };
@@ -761,6 +774,7 @@ describe("thread lock transaction budget", () => {
   it("finalizes a run with the explicit budget", async () => {
     const createEvent = vi.fn(async () => ({ threadId: "thread-1", seq: 0 }));
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       externalEffect: { deleteMany: vi.fn(async () => ({ count: 0 })) },
       $queryRaw: vi.fn(async () => []),
       run: {
@@ -1177,6 +1191,7 @@ describe("settleReleasedTakeoverCards", () => {
       { kind: "computer", state: "Ready", text: "other" },
     ];
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findMany: vi.fn(async () => [{ id: "message-1", blocks }]),
@@ -1223,6 +1238,7 @@ describe("settleReleasedTakeoverCards", () => {
 describe("pauseRunForInput", () => {
   it("does not release a successor's computer lease after losing worker ownership", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([]),
       run: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       computerExecutionLease: { updateMany: vi.fn() },
@@ -1255,6 +1271,7 @@ describe("pauseRunForInput", () => {
       const fanout = new TestFanout();
       const publish = vi.spyOn(fanout, "publish");
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $executeRaw: vi.fn(async () => 0),
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
         run: {
@@ -1391,6 +1408,7 @@ describe("pauseRunForInput", () => {
   it("stores offered choice actions on the run checkpoint for resume", async () => {
     const fanout = new TestFanout();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $executeRaw: vi.fn(async () => 0),
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       run: {
@@ -1484,6 +1502,7 @@ describe("pauseRunForTakeover", () => {
     const fanout = new TestFanout();
     const publish = vi.spyOn(fanout, "publish");
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       run: {
         updateMany: vi.fn().mockResolvedValue({ count: 1 }),
@@ -1559,6 +1578,7 @@ describe("answerRunInput", () => {
     const publish = vi.spyOn(fanout, "publish");
     publish.mockRejectedValueOnce(new Error("realtime unavailable"));
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -1656,6 +1676,7 @@ describe("answerRunInput", () => {
   it("answers a card whose message also holds a block this release's schema rejects", async () => {
     const legacyBlock = { kind: "block_from_an_earlier_release", detail: "kept as stored" };
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -1719,6 +1740,7 @@ describe("answerRunInput", () => {
     // A routine run sees no thread history: its resumed attempt only has the task prompt.
     const answerChoice = async (prompt: string, question: string, answer: string) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
         message: {
           findFirst: vi.fn().mockResolvedValue({
@@ -1798,6 +1820,7 @@ describe("answerRunInput", () => {
       opener: { trigger: string; clientNonce?: string } = { trigger: "created" },
     ) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         externalEffect: {
           findMany: vi.fn().mockResolvedValue([]),
           deleteMany: vi.fn().mockResolvedValue({ count: 0 }),
@@ -1896,6 +1919,7 @@ describe("answerRunInput", () => {
   it("records a spoken call answer as a user utterance with the call identity", async () => {
     const fanout = new TestFanout();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $executeRaw: vi.fn(async () => 0),
       user: { findMany: vi.fn().mockResolvedValue([]) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
@@ -1986,6 +2010,7 @@ describe("answerRunInput", () => {
       const fanout = new TestFanout();
       const secret = "sk-live-choice-secret";
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $executeRaw: vi.fn(async () => 0),
         user: { findMany: vi.fn().mockResolvedValue([]) },
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
@@ -2090,6 +2115,7 @@ describe("answerRunInput", () => {
   it("answers a custom free-text reply that is not an offered choice", async () => {
     const fanout = new TestFanout();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2180,6 +2206,7 @@ describe("answerRunInput", () => {
   it("treats a typed choice label as selecting that option", async () => {
     const fanout = new TestFanout();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2269,6 +2296,7 @@ describe("answerWaitingRunWithTextInTransaction", () => {
     async (scenario) => {
       const latest = scenario !== "older" && scenario !== "reply";
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
         message: {
           findMany: vi.fn().mockResolvedValue([
@@ -2355,6 +2383,7 @@ describe("answerWaitingRunWithTextInTransaction", () => {
 
   it("leaves approval and secret cards on the dedicated answer path", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       message: {
         findMany: vi.fn().mockResolvedValue([
           {
@@ -2392,6 +2421,7 @@ describe("answerWaitingRunWithTextInTransaction", () => {
 
   it("does not pass over a newer message that only reads as a reaction once entries are dropped", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       message: {
         findMany: vi
           .fn()
@@ -2430,6 +2460,7 @@ describe("answerWaitingRunWithTextInTransaction", () => {
 describe("answerRunInput approvals", () => {
   function expiringCard() {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2511,6 +2542,7 @@ describe("answerRunInput approvals", () => {
   it("approves consequential actions without overwriting the task prompt", async () => {
     const fanout = new TestFanout();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2605,6 +2637,7 @@ describe("answerRunInput approvals", () => {
 
   it("leaves an approval to the run's own user in a shared space", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2672,6 +2705,7 @@ describe("answerRunInput approvals", () => {
       },
     };
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2756,6 +2790,7 @@ describe("answerRunInput approvals", () => {
     async (kind, request, matchKind, matchValue, spaceOverridesConfirmations) => {
       const fanout = new TestFanout();
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
         message: {
           findFirst: vi.fn().mockResolvedValue({
@@ -2898,6 +2933,7 @@ describe("answerRunInput approvals", () => {
     ],
   ])("always allows each action of %s, never the batch tool", async (_, batchActions, saved) => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -2981,6 +3017,7 @@ describe("answerRunInput approvals", () => {
 
   it("does not let another workspace member create an always-allow rule for the run owner", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -3037,6 +3074,7 @@ describe("answerRunInput approvals", () => {
 
   it("does not resume another member's question as that member", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -3073,6 +3111,7 @@ describe("answerRunInput approvals", () => {
 
   it("does not queue a run when an approval card has no matching effect", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -3116,6 +3155,7 @@ describe("answerRunInput approvals", () => {
 
   it("does not queue a run for an action that the approval card did not offer", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -3161,6 +3201,7 @@ describe("answerRunInput approvals", () => {
   it("rejects a secret answer over the value limit without storing it", async () => {
     const store = vi.fn();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       run: {
         findFirst: vi
@@ -3200,6 +3241,7 @@ describe("answerRunInput approvals", () => {
   it("loads the space's content keys before opening the transaction", async () => {
     const order: string[] = [];
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       run: { findFirst: vi.fn().mockResolvedValue(null) },
     };
@@ -3230,6 +3272,7 @@ describe("answerRunInput approvals", () => {
 
   it("rejects input when the run is no longer waiting", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       run: { findFirst: vi.fn().mockResolvedValue(null), updateMany: vi.fn() },
       message: { findFirst: vi.fn() },
@@ -3271,6 +3314,7 @@ describe("answerRunInput approvals", () => {
 
   it("rejects an already answered prompt without queuing the run", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -3307,6 +3351,7 @@ describe("answerRunInput approvals", () => {
     const fanout = new TestFanout();
     const store = vi.fn().mockResolvedValue(undefined);
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -3416,6 +3461,7 @@ describe("answerRunInput approvals", () => {
         : { name: "example_api", origin: "https://api.example.test", auth: { type: "bearer" } };
     const store = vi.fn().mockResolvedValue(undefined);
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -3494,6 +3540,7 @@ describe("answerRunInput approvals", () => {
   it("does not let another workspace member save a credential as the run owner", async () => {
     const store = vi.fn();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       run: {
         findFirst: vi.fn().mockResolvedValue({ botId: "bot-1", userId: "owner", taskId: "task-1" }),
@@ -3546,6 +3593,7 @@ describe("answerRunInput approvals", () => {
     function codeCard() {
       const store = vi.fn().mockResolvedValue(undefined);
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
         message: {
           findFirst: vi.fn().mockResolvedValue({
@@ -3652,6 +3700,7 @@ describe("answerRunInput approvals", () => {
         status: "pending",
       };
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
         message: {
           findFirst: vi.fn().mockResolvedValue({ id: "message-1", blocks: [block] }),
@@ -3823,6 +3872,7 @@ describe("answerRunInput approvals", () => {
     function loginFixture(credential: object = login, loginFields?: string[]) {
       const store = vi.fn().mockResolvedValue(undefined);
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
         message: {
           findFirst: vi.fn().mockResolvedValue({
@@ -3970,6 +4020,7 @@ describe("answerRunInput approvals", () => {
 
   it("rejects secret asks when no run secret writer is configured", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn().mockResolvedValue([{ id: "thread-1" }]),
       message: {
         findFirst: vi.fn().mockResolvedValue({
@@ -4013,6 +4064,7 @@ describe("answerRunInput approvals", () => {
 describe("queue admission beside pending cards", () => {
   it("admits a user wake beside waiting_input", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: { update: vi.fn().mockResolvedValue({ nextMessageSeq: 3, nextEventSeq: 4 }) },
@@ -4068,6 +4120,7 @@ describe("queue admission beside pending cards", () => {
       text: "hi all",
     };
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       run: {
         findFirst: vi.fn().mockResolvedValue(null),
         create: vi.fn().mockResolvedValue({ id: "continuation" }),
@@ -4126,6 +4179,7 @@ describe("queue admission beside pending cards", () => {
     });
     const continuation = async (rows: ReturnType<typeof row>[]) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         run: {
           findFirst: vi.fn().mockResolvedValue(null),
           create: vi.fn().mockResolvedValue({ id: "continuation" }),
@@ -4177,6 +4231,7 @@ describe("queue admission beside pending cards", () => {
 
   it("creates a pending steering continuation without attaching it to a paused run", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       run: {
         findFirst: vi.fn(async ({ where }: { where: { status: { in: string[] } } }) =>
           where.status.in.includes("waiting_input") ? { id: "paused" } : null,
@@ -4221,6 +4276,7 @@ describe("sendUserMessage", () => {
     const fanout = new TestFanout();
     const publish = vi.spyOn(fanout, "publish");
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -4359,6 +4415,7 @@ describe("sendUserMessage", () => {
 
   it("pins an agreed inbound model onto the run it creates", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -4421,6 +4478,7 @@ describe("sendUserMessage", () => {
 
   it("persists steering instead of starting a parallel run when the bot is busy", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -4487,6 +4545,7 @@ describe("sendUserMessage", () => {
     "handles a message arriving at a $waiting takeover request ($trigger, group: $group)",
     async ({ waiting, trigger, group }) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn(async () => []),
         space: { findUnique: vi.fn() },
         thread: {
@@ -4568,6 +4627,7 @@ describe("sendUserMessage", () => {
 
   it("keeps an agreed inbound model on steering while a routine run is busy", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -4632,6 +4692,7 @@ describe("sendUserMessage", () => {
 
   it("keeps an inbound message pending while the creation intro is active", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -4687,6 +4748,7 @@ describe("sendUserMessage", () => {
 
   it("keeps a messaging inbound's origin on the hold behind the creation intro", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -4750,6 +4812,7 @@ describe("sendUserMessage", () => {
     "keeps the message pending when the busy run is a %s turn",
     async (trigger) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn(async () => []),
         space: { findUnique: vi.fn() },
         thread: {
@@ -4811,6 +4874,7 @@ describe("sendUserMessage", () => {
 
   it("keeps another member's message pending instead of steering the busy run", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       space: { findUnique: vi.fn() },
       $queryRaw: vi.fn(async () => []),
       thread: {
@@ -4864,6 +4928,7 @@ describe("sendUserMessage", () => {
 
   it("steers the conversational run when a parallel webhook turn is also active", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -4980,6 +5045,7 @@ describe("sendUserMessage", () => {
           ]
         : [{ kind: "text" as const, text: "hello" }];
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       space: { findUnique: vi.fn() },
       thread: {
@@ -5076,6 +5142,7 @@ describe("claimSteering", () => {
     "marks a message from %s by its sender",
     async (_, originTrigger, userId, blocks, origin) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn(),
         run: {
           findFirst: vi
@@ -5121,6 +5188,7 @@ describe("claimSteering", () => {
 
   it("claims pending messages for the fenced run in message order", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(),
       run: {
         findFirst: vi.fn().mockResolvedValue({ id: "run-1", spaceId: "space-1", userId: "user-1" }),
@@ -5218,6 +5286,7 @@ describe("claimSteering", () => {
 
   it("does not claim steering into a tool-free creation intro", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(),
       run: { findFirst: vi.fn().mockResolvedValue({ id: "intro-run", trigger: "created" }) },
       steeringMessage: {
@@ -5247,6 +5316,7 @@ describe("claimSteering", () => {
     "leaves pending user messages alone while a %s turn is running",
     async (trigger) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn(),
         run: { findFirst: vi.fn().mockResolvedValue({ id: "run-routine", trigger }) },
         steeringMessage: {
@@ -5281,6 +5351,7 @@ describe("claimSteering", () => {
     "keeps held webhook deliveries out of a %s turn",
     async (trigger) => {
       const tx = {
+        approvalWait: { create: vi.fn(async () => ({})) },
         $queryRaw: vi.fn(),
         run: {
           findFirst: vi.fn(async () => ({
@@ -5317,6 +5388,7 @@ describe("claimSteering", () => {
 
   it("leaves channel and in-app pending rows for a direct-message run", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(),
       run: {
         findFirst: vi.fn().mockResolvedValue({
@@ -5358,6 +5430,7 @@ describe("claimSteering", () => {
 
   it("retries a claim whose transaction could not get a connection in time", async () => {
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(),
       run: { findFirst: vi.fn().mockResolvedValue(null) },
     };
@@ -5388,6 +5461,7 @@ describe("clearThread", () => {
     const fanout = new TestFanout();
     const publish = vi.spyOn(fanout, "publish");
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       $executeRaw: vi.fn(async () => 0),
       threadRead: {
@@ -5477,6 +5551,7 @@ describe("clearThread", () => {
   it("scopes group clear lease cleanup to cancelled run ids", async () => {
     const fanout = new TestFanout();
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $executeRaw: vi.fn(async () => 0),
       threadRead: {
         deleteMany: vi.fn(async () => ({ count: 0 })),
@@ -5736,6 +5811,7 @@ describe("held instruction answers", () => {
       ],
     };
     const tx = {
+      approvalWait: { create: vi.fn(async () => ({})) },
       $queryRaw: vi.fn(async () => []),
       run: {
         findFirst: vi.fn(async () => ({ botId: "bot-1", userId: "owner" })),
@@ -5885,6 +5961,7 @@ describe("discardAnsweredSteering", () => {
 
 it("checks cross-space peer permission inside the message transaction before creating a run", async () => {
   const tx = {
+    approvalWait: { create: vi.fn(async () => ({})) },
     space: { findUnique: vi.fn() },
     thread: { update: vi.fn(async () => ({ nextMessageSeq: 1 })) },
     message: { create: vi.fn(async () => ({ id: "message-1", seq: 0 })) },

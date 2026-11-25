@@ -553,6 +553,17 @@ async function commitAnswerRunInput(
   );
   if (!edited) return null;
   await tx.message.update({ where: { id: message.id }, data: { blocks: edited.stored } });
+  // How long the person took, for the dashboard's time-to-answer; an expired card was never seen.
+  if (!expired)
+    await tx.approvalWait.create({
+      data: {
+        spaceId: input.spaceId,
+        botId: run.botId,
+        userId: run.userId,
+        approval: approvalAsk,
+        askedAt: message.createdAt,
+      },
+    });
   const updated = await appendEventInTransaction(tx, {
     spaceId: input.spaceId,
     threadId: input.threadId,

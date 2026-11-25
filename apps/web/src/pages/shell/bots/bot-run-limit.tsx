@@ -51,3 +51,51 @@ export function BotRunLimitSection({ bot }: { bot: Bot }) {
     </PanelSection>
   );
 }
+
+const MINUTES = ["default", "5", "15", "30", "60", "0"] as const;
+type Minutes = (typeof MINUTES)[number];
+
+/** The minutes of a person's work one finished run stands in for, behind "Hours saved". */
+export function BotMinutesSavedSection({ bot }: { bot: Bot }) {
+  const { t } = useLingui();
+  const labelId = useId();
+  const queries = useSpaceQueries();
+  const save = useSave({
+    save: (ask: { botId: string; minutes: number | null }, client) =>
+      client.bots.setMinutesSaved(ask),
+    stale: [queries.spaces.list.key(), queries.usage.team.key()],
+  });
+  const asked = save.input?.botId === bot.id && (save.pending || save.error) ? save.input : null;
+  const minutes = asked ? asked.minutes : (bot.minutesSavedPerRun ?? null);
+  const value: Minutes =
+    minutes === null
+      ? "default"
+      : (MINUTES.find((choice) => choice === String(minutes)) ?? "default");
+  const labels: Record<Minutes, string> = {
+    default: t`10 min (default)`,
+    "5": t`5 min`,
+    "15": t`15 min`,
+    "30": t`30 min`,
+    "60": t`1 hour`,
+    "0": t`Don't count`,
+  };
+  return (
+    <PanelSection label={<span id={labelId}>{<Trans>Time saved per task</Trans>}</span>}>
+      <OptionSelect
+        aria-labelledby={labelId}
+        className="w-full"
+        value={value}
+        options={MINUTES.map((choice) => ({ value: choice, label: labels[choice] }))}
+        disabled={save.pending}
+        onValueChange={(next) =>
+          save.run({ botId: bot.id, minutes: next === "default" ? null : Number(next) })
+        }
+      />
+      {asked && save.error ? (
+        <p role="alert" className="mt-2 text-body-sm text-destructive">
+          {errorText(save.error, t`Could not save`)}
+        </p>
+      ) : null}
+    </PanelSection>
+  );
+}

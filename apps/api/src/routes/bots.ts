@@ -422,6 +422,10 @@ export function botsRoutes(ctx: RouterContext) {
         await repos.reorderChats(context.actor, input.chats);
         return { ok: true as const };
       }),
+      setMinutesSaved: authed.bots.setMinutesSaved.handler(async ({ context, input }) => {
+        await repos.setMinutesSaved(context.actor, input.botId, input.minutes);
+        return { ok: true as const };
+      }),
       setDailyRunLimit: authed.bots.setDailyRunLimit.handler(async ({ context, input }) => {
         await repos.setDailyRunLimit(context.actor, input.botId, input.limit);
         return { ok: true as const };
