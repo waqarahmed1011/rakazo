@@ -27,6 +27,7 @@ export const COMPATIBLE_ENDPOINT_PRESETS: CompatibleEndpointPreset[] = [
     apiProtocol: "responses",
   },
   { id: "deepinfra", name: "DeepInfra", baseUrl: "https://api.deepinfra.com/v1/openai" },
+  { id: "straitly", name: "Straitly", baseUrl: "https://api.straitly.ai/v1", publicModels: true },
 ];
 
 const BUILT_IN_PUBLIC_MODEL_HOSTS = presetHosts(COMPATIBLE_ENDPOINT_PRESETS);
