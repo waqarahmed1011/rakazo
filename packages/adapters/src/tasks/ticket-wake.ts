@@ -3,6 +3,7 @@ import type { LabFeature } from "@rakazo/contracts";
 import {
   hasLab,
   isTicketCompletedStatus,
+  isTicketProposedStatus,
   resolveLabs,
   TicketStatusSchema,
 } from "@rakazo/contracts";
@@ -22,7 +23,12 @@ export async function wakeTicketAssignee(
     });
     if (!ticket) return null;
     const status = TicketStatusSchema.safeParse(ticket.status);
-    if (!status.success || isTicketCompletedStatus(status.data)) return null;
+    if (
+      !status.success ||
+      isTicketCompletedStatus(status.data) ||
+      isTicketProposedStatus(status.data)
+    )
+      return null;
     const bot = await tx.bot.findFirst({
       where: { id: input.botId, spaceId: input.spaceId, archivedAt: null },
       select: { id: true, userId: true, thread: { select: { id: true } } },

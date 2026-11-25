@@ -341,6 +341,37 @@ describe("ticket mutations", () => {
       }),
     );
   });
+  it("keeps a proposed ticket waiting for a person: no wake, and no bot can approve it", async () => {
+    const s = mutationDeps();
+    await createTicket(s.deps, {
+      spaceId: "ws",
+      userId: "user-1",
+      botId: "bot-1",
+      title: "Chase the Huntley permit fee",
+      ownerBotId: "bot-2",
+      proposed: true,
+    });
+    expect(s.tx.ticket.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ status: "proposed" }) }),
+    );
+    expect(s.changes).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        wakeAssignee: false,
+        offer: { title: "Chase the Huntley permit fee", botId: "bot-1" },
+      }),
+    );
+    const byBot = await updateTicket(s.deps, {
+      spaceId: "ws",
+      userId: "user-1",
+      botId: "bot-1",
+      id: "t1",
+      status: "todo",
+    });
+    expect(byBot).toEqual({ error: "Only a person can approve a proposed ticket." });
+    await updateTicket(s.deps, { spaceId: "ws", userId: "user-1", id: "t1", status: "todo" });
+    expect(s.changes).toHaveBeenLastCalledWith(expect.objectContaining({ wakeAssignee: true }));
+  });
+
   it("does not wake a bot creating or assigning a ticket to itself", async () => {
     const s = mutationDeps();
     await createTicket(s.deps, { spaceId: "ws", userId: "user-1", botId: "bot-1", title: "Ship" });

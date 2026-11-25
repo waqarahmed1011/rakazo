@@ -6,6 +6,7 @@ export function useTicketStatusLabels(): Record<TicketStatus, string> {
   const { t } = useLingui();
   return useMemo(
     () => ({
+      proposed: t`Proposed`,
       todo: t`To do`,
       doing: t`In progress`,
       review: t`In review`,

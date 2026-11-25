@@ -1,11 +1,24 @@
 import * as z from "zod";
 import { Id } from "../ids.js";
 
-export const TICKET_STATUSES = ["todo", "doing", "review", "blocked", "done", "closed"] as const;
+/** `proposed` is work a bot offers to do; nothing runs until a person approves it. */
+export const TICKET_STATUSES = [
+  "proposed",
+  "todo",
+  "doing",
+  "review",
+  "blocked",
+  "done",
+  "closed",
+] as const;
 export const TicketStatusSchema = z.enum(TICKET_STATUSES);
 export type TicketStatus = z.infer<typeof TicketStatusSchema>;
 
 /** `done` is finished-but-open for review; `closed` is terminal, so both stamp completion. */
+export function isTicketProposedStatus(status: string): boolean {
+  return status === "proposed";
+}
+
 export function isTicketCompletedStatus(status: TicketStatus): boolean {
   return status === "done" || status === "closed";
 }

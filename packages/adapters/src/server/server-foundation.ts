@@ -190,7 +190,7 @@ export async function createPushDelivery(input: {
   const browserPushRoutes = input.browserPush
     ? { store: browserPushStore, publicKey: input.browserPush.publicKey }
     : undefined;
-  return { pushTokens, browserPushStore, browserPushRoutes, notifications, workActivities };
+  return { pushTokens, browserPush: browserPushRoutes, notifications, workActivities };
 }
 
 /**

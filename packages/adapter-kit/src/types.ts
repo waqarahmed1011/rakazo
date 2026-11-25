@@ -1262,6 +1262,8 @@ export interface NotificationMessage {
   groupId?: string;
   /** Unread chats to show on the app icon, when the sender knows them. */
   badge?: number;
+  /** A ticket a bot proposed, so a notification can approve or decline it. */
+  ticketId?: string;
 }
 
 /** A product-authored transactional email, independent of its delivery vendor. */

@@ -168,12 +168,6 @@ async function main() {
     // Never poll inbound here: the API process owns the inbound sink.
     pollInboundMessages: false,
   });
-  const ticketChanges = createTicketChangeNotifier({
-    boardEvents,
-    jobs,
-    prisma,
-    deploymentLabs: env.deploymentLabs,
-  });
   // One provider instance so emulator launches and polls share the same Map.
   const cloudAgent = createCloudAgentConnection();
   const paymentWallet = await createPaymentWalletProvider();
@@ -187,6 +181,13 @@ async function main() {
     expoAccessToken: process.env.EXPO_ACCESS_TOKEN,
     apnsVoip: apnsVoipConfig(process.env),
     browserPush: browserPushKeys(process.env),
+  });
+  const ticketChanges = createTicketChangeNotifier({
+    boardEvents,
+    jobs,
+    prisma,
+    deploymentLabs: env.deploymentLabs,
+    notifications,
   });
   foundation.useWorkActivities(workActivities);
   const email = configuredBotEmailProvider({

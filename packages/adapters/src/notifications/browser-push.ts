@@ -131,6 +131,7 @@ export function browserPushPayload(message: NotificationMessage, spaceId: string
     ...(message.groupId ? { groupId: message.groupId } : {}),
     ...(message.runId ? { runId: message.runId } : {}),
     ...(message.badge !== undefined ? { badge: message.badge } : {}),
+    ...(message.ticketId ? { ticketId: message.ticketId } : {}),
   };
 }
 

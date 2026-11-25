@@ -3,6 +3,7 @@ import {
   CommentTicketInput,
   CreateTicketInput,
   isTicketCompletedStatus,
+  isTicketProposedStatus,
   TicketStatusSchema,
   UpdateTicketInput,
 } from "@rakazo/contracts";
@@ -168,6 +169,8 @@ export async function createTicket(
     description?: string;
     priority?: string;
     ownerBotId?: string;
+    /** A bot offering work: it waits for a person's approval and wakes nobody. */
+    proposed?: boolean;
   },
 ) {
   const parsed = CreateTicketInput.safeParse({
@@ -189,6 +192,7 @@ export async function createTicket(
         description: data.description ?? null,
         priority: data.priority,
         assigneeBotId: data.assigneeBotId,
+        ...(input.proposed ? { status: "proposed" } : {}),
         createdByBotId: input.botId ?? null,
         createdByUserId: input.userId,
       },
@@ -199,7 +203,8 @@ export async function createTicket(
     boardId: board.id,
     ticketId: row.id,
     assigneeBotId: row.assigneeBotId,
-    wakeAssignee: row.assigneeBotId !== input.botId,
+    wakeAssignee: !input.proposed && row.assigneeBotId !== input.botId,
+    ...(input.proposed ? { offer: { title: row.title, botId: input.botId ?? null } } : {}),
   });
   return { ticket: toTicketDto(row, board.ticketPrefix) };
 }
@@ -230,6 +235,13 @@ export async function updateTicket(
       where: { id: data.id, spaceId: input.spaceId, boardId: board.id },
     });
     if (!current) return null;
+    // Only a person approves an offer; a bot may still withdraw its own.
+    const approving =
+      isTicketProposedStatus(current.status) &&
+      data.status !== undefined &&
+      !isTicketProposedStatus(data.status) &&
+      data.status !== "closed";
+    if (approving && input.botId) return { refused: true as const };
     const row = await tx.ticket.update({
       where: { id: current.id },
       data: {
@@ -249,16 +261,19 @@ export async function updateTicket(
     });
     return {
       row,
+      approving,
       reassigned: data.assigneeBotId !== undefined && data.assigneeBotId !== current.assigneeBotId,
     };
   });
   if (!result) return { error: "Ticket not found." };
+  if ("refused" in result) return { error: "Only a person can approve a proposed ticket." };
   await deps.onTicketChange?.({
     spaceId: input.spaceId,
     boardId: board.id,
     ticketId: result.row.id,
     assigneeBotId: result.row.assigneeBotId,
-    wakeAssignee: result.reassigned && result.row.assigneeBotId !== input.botId,
+    wakeAssignee:
+      result.approving || (result.reassigned && result.row.assigneeBotId !== input.botId),
   });
   return { ticket: toTicketDto(result.row, board.ticketPrefix) };
 }

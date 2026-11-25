@@ -27,6 +27,8 @@ export function boardRefreshFailure(detail: string): string {
 /** A ticket's status as the board names it, matching the web board's wording. */
 export function ticketStatusLabel(status: TicketStatus): string {
   switch (status) {
+    case "proposed":
+      return t`Proposed`;
     case "todo":
       return t`To do`;
     case "doing":

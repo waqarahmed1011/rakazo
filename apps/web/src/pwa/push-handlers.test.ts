@@ -103,6 +103,26 @@ describe("push handlers", () => {
     expect(navigate).toHaveBeenCalledWith("https://app.example.test/app/bot-1");
   });
 
+  it("approves a bot's offer as a to-do and declines it as closed", async () => {
+    const offer = { ...approval, runId: undefined, ticketId: "ticket-1" };
+    const { scope, fire } = fakeScope();
+    await fire("push", { data: { json: () => offer } });
+    expect(scope.registration.showNotification).toHaveBeenCalledWith(
+      "Inbox needs approval",
+      expect.objectContaining({ tag: "ticket-1", actions: expect.any(Array) }),
+    );
+    for (const [action, status] of [
+      ["allow", "todo"],
+      ["deny", "closed"],
+    ] as const) {
+      await fire("notificationclick", { action, notification: { data: offer, close: vi.fn() } });
+      expect(scope.fetch).toHaveBeenLastCalledWith(
+        "https://app.example.test/rpc/tickets/update",
+        expect.objectContaining({ body: JSON.stringify({ json: { id: "ticket-1", status } }) }),
+      );
+    }
+  });
+
   it("opens a group chat on its own route", () => {
     expect(noticePath({ ...approval, groupId: "group 1" })).toBe("/app/g/group%201");
   });

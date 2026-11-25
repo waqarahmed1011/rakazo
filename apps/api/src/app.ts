@@ -320,12 +320,6 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       runs!,
     );
   foundation.useJobs(jobs);
-  const ticketChanges = createTicketChangeNotifier({
-    boardEvents,
-    jobs,
-    prisma,
-    deploymentLabs: env.deploymentLabs,
-  });
   const sandbox: SandboxProvider =
     sandboxOverride ??
     (await createRunSandbox(env.sandboxProvider, {
@@ -426,16 +420,22 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       : new PiAgentRuntime({
           sessionRoot: env.piSessionRecording ? piSessionsRoot(env.dataDir) : undefined,
         }));
-  const { pushTokens, browserPushStore, browserPushRoutes, notifications, workActivities } =
-    await createPushDelivery({
-      prisma,
-      jobs,
-      encryptionKey: env.encryptionKey,
-      expoAccessToken: env.expoAccessToken,
-      apnsVoip: env.apnsVoip,
-      browserPush: env.browserPush,
-      notifications: notificationsOverride,
-    });
+  const { pushTokens, browserPush, notifications, workActivities } = await createPushDelivery({
+    prisma,
+    jobs,
+    encryptionKey: env.encryptionKey,
+    expoAccessToken: env.expoAccessToken,
+    apnsVoip: env.apnsVoip,
+    browserPush: env.browserPush,
+    notifications: notificationsOverride,
+  });
+  const ticketChanges = createTicketChangeNotifier({
+    boardEvents,
+    jobs,
+    prisma,
+    deploymentLabs: env.deploymentLabs,
+    notifications,
+  });
   foundation.useWorkActivities(workActivities);
   const {
     provider: meetingProvider,
@@ -511,7 +511,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
       pushTokens,
       workActivities,
       deviceSessions,
-      browserPushStore,
+      browserPushStore: browserPush?.store,
     }),
   });
   const oauthTokenUpgrade = auth
@@ -705,7 +705,7 @@ async function buildApp(overrides: CreateAppOverrides): Promise<AppHandles> {
     prisma,
     notifications,
     pushTokens,
-    browserPush: browserPushRoutes,
+    browserPush,
     workActivities,
     events,
     ticketChanges,

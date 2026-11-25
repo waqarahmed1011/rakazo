@@ -7,6 +7,8 @@ export type PushNotice = {
   threadId: string;
   groupId?: string;
   runId?: string;
+  /** A bot's offer: Approve starts the work, Deny declines it. */
+  ticketId?: string;
 };
 
 type ExtendableEvent = { waitUntil(promise: Promise<unknown>): void };
@@ -77,11 +79,11 @@ export function installPushHandlers(scope: PushScope): void {
   scope.addEventListener("push", (event) => {
     const notice = readNotice(event.data?.json());
     if (!notice) return;
-    const approval = notice.kind === "help" && notice.runId;
+    const approval = notice.kind === "help" && (notice.runId || notice.ticketId);
     event.waitUntil(
       scope.registration.showNotification(notice.title, {
         body: notice.body,
-        tag: notice.runId ?? notice.threadId,
+        tag: notice.runId ?? notice.ticketId ?? notice.threadId,
         data: notice,
         icon: "/icon-192.png",
         ...(approval
@@ -103,24 +105,40 @@ export function installPushHandlers(scope: PushScope): void {
     if (!notice) return;
     const answer =
       event.action === APPROVE_ACTION || event.action === DENY_ACTION ? event.action : null;
-    event.waitUntil(answer && notice.runId ? answerApproval(notice, answer) : openChat(notice));
+    event.waitUntil(
+      answer && notice.ticketId
+        ? answerOffer(notice, answer)
+        : answer && notice.runId
+          ? answerApproval(notice, answer)
+          : openChat(notice),
+    );
   });
 
   async function answerApproval(notice: PushNotice, answer: string): Promise<void> {
+    await post(notice, "threads/answerApproval", { runId: notice.runId, answer });
+  }
+
+  /** An approved offer becomes a to-do its bot starts on; a denied one is closed. */
+  async function answerOffer(notice: PushNotice, answer: string): Promise<void> {
+    const status = answer === APPROVE_ACTION ? "todo" : "closed";
+    await post(notice, "tickets/update", { id: notice.ticketId, status });
+  }
+
+  async function post(notice: PushNotice, path: string, json: unknown): Promise<void> {
     let answered = false;
     try {
-      const response = await scope.fetch(`${scope.location.origin}/rpc/threads/answerApproval`, {
+      const response = await scope.fetch(`${scope.location.origin}/rpc/${path}`, {
         method: "POST",
         credentials: "same-origin",
         headers: { "content-type": "application/json", "x-rakazo-space-id": notice.spaceId },
-        body: JSON.stringify({ json: { runId: notice.runId, answer } }),
+        body: JSON.stringify({ json }),
       });
       answered = response.ok;
     } catch (error) {
-      // Offline: the card in the chat still waits for an answer.
-      console.warn("Could not answer the approval", error);
+      // Offline: the card still waits for an answer.
+      console.warn("Could not send the answer", error);
     }
-    // Signed out, already answered, or offline: the card in the chat says what happened.
+    // Signed out, already answered, or offline: the chat or dashboard says what happened.
     if (!answered) await openChat(notice);
   }
 

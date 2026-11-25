@@ -178,6 +178,7 @@ export const taskTools: ToolHandlers = {
         description: args.description !== undefined ? String(args.description) : undefined,
         priority: args.priority !== undefined ? String(args.priority) : undefined,
         ownerBotId: args.ownerBotId !== undefined ? String(args.ownerBotId) : undefined,
+        proposed: args.proposed === true,
       }),
     );
   },

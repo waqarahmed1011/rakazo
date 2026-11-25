@@ -58,6 +58,12 @@ export function OverviewDialog({ onClose }: { onClose: () => void }) {
       if (!next.delete(stat)) next.add(stat);
       return next;
     });
+  // Work bots offered on their own; Yes makes it a to-do the bot starts on, Not now closes it.
+  const offers = (tickets.data?.tickets ?? []).filter((ticket) => ticket.status === "proposed");
+  const answer = useSave({
+    save: (ask: { id: string; status: "todo" | "closed" }, client) => client.tickets.update(ask),
+    stale: [queries.tickets.list.key()],
+  });
   const stop = useSave({
     save: (run: RunActivityRow, client) =>
       client.threads.stop(run.groupId ? { groupId: run.groupId } : { botId: run.botId }),
@@ -195,6 +201,53 @@ export function OverviewDialog({ onClose }: { onClose: () => void }) {
               {errorText(loadError)}
             </p>
           ) : null}
+          {offers.length > 0 ? (
+            <section>
+              <SectionHeading as="h2">
+                <Trans>Offers</Trans>
+              </SectionHeading>
+              {answer.error ? (
+                <p role="alert" className="text-body-sm text-destructive">
+                  {errorText(answer.error, t`Could not answer the offer`)}
+                </p>
+              ) : null}
+              <ul className="divide-y divide-border">
+                {offers.map((offer) => {
+                  const botId = offer.createdByBotId ?? offer.assigneeBotId ?? "";
+                  return (
+                    <li key={offer.id} className="flex items-center gap-3 py-2">
+                      {avatar(botId)}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-body font-medium">{offer.title}</div>
+                        <div className="truncate text-body-sm text-muted-foreground">
+                          {botById.get(botId)?.name ?? ""}
+                          {offer.description ? `: ${offer.description}` : ""}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 gap-1">
+                        <Button
+                          size="sm"
+                          disabled={answer.pending}
+                          onClick={() => answer.run({ id: offer.id, status: "todo" })}
+                        >
+                          <Trans>Yes</Trans>
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={answer.pending}
+                          onClick={() => answer.run({ id: offer.id, status: "closed" })}
+                        >
+                          <Trans>Not now</Trans>
+                        </Button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            </section>
+          ) : null}
+
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
             {STATS.map((stat) => (
               <button
