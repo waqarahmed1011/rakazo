@@ -17,6 +17,7 @@ import {
 import { downloadArtifactBytes } from "../../lib/pages/artifact-open";
 import { useSave, useSpaceQueries } from "../../lib/query/query";
 import { useSpaceRpc } from "../../lib/query/space-rpc";
+import { errorText } from "../../lib/query/user-error";
 
 const NO_DOCS: MemoryDocument[] = [];
 const NO_SKILLS: AgentSkillCatalogEntry[] = [];
@@ -396,8 +397,9 @@ export function AgentSkills() {
       } catch {
         setError(t`Could not load`);
       }
-    } catch {
-      setError(t`Could not save skill`);
+    } catch (failure) {
+      // The server names what is wrong, such as a missing name or description header.
+      setError(errorText(failure, t`Could not save skill`));
     } finally {
       setBusy(false);
     }
