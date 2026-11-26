@@ -1,7 +1,16 @@
 import { useLingui } from "@lingui/react/macro";
 import type { Bot } from "@rakazo/contracts";
 import { Button, Popover, PopoverContent, PopoverTrigger } from "@rakazo/ui-web";
-import { Bell, LayoutDashboard, PanelLeft, PanelLeftClose, Plus, Search } from "lucide-react";
+import {
+  Bell,
+  LayoutDashboard,
+  PanelLeft,
+  PanelLeftClose,
+  Plus,
+  Search,
+  Settings,
+  SquareKanban,
+} from "lucide-react";
 import { IconTooltip } from "../../../components/IconTooltip";
 import { WindowChrome } from "../../../components/WindowChrome";
 import { desktopBridge, windowChromeKind } from "../../../lib/platform/desktop";
@@ -23,6 +32,8 @@ export function SidebarHeader({
   searchOpen = false,
   onSearch,
   onOverview,
+  onBoard,
+  onSettings,
   setBotsSidebarCollapsedPref,
   bots,
   setMobileSidebarOpen,
@@ -40,6 +51,9 @@ export function SidebarHeader({
   searchOpen?: boolean;
   onSearch?: () => void;
   onOverview?: () => void;
+  /** Opens the Board; absent where the Board is off. */
+  onBoard?: () => void;
+  onSettings?: () => void;
   setBotsSidebarCollapsedPref: (collapsed: boolean) => void;
   bots: Bot[];
   setMobileSidebarOpen: (open: boolean) => void;
@@ -117,6 +131,20 @@ export function SidebarHeader({
             </Button>
           </IconTooltip>
         )}
+        {mini || !onBoard ? null : (
+          <IconTooltip label={t`Board`} side={labelSide}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t`Board`}
+              data-testid="sidebar-board"
+              onClick={onBoard}
+              className="app-no-drag text-muted-foreground"
+            >
+              <SquareKanban className={ICON} strokeWidth={STROKE} aria-hidden="true" />
+            </Button>
+          </IconTooltip>
+        )}
         {mini ? null : (
           <IconTooltip label={t`Activity`} side={labelSide}>
             <Button
@@ -135,6 +163,20 @@ export function SidebarHeader({
                 fill={activityMode ? "currentColor" : "none"}
                 aria-hidden="true"
               />
+            </Button>
+          </IconTooltip>
+        )}
+        {mini || !onSettings ? null : (
+          <IconTooltip label={t`Settings`} side={labelSide}>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label={t`Settings`}
+              data-testid="sidebar-settings"
+              onClick={onSettings}
+              className="app-no-drag text-muted-foreground"
+            >
+              <Settings className={ICON} strokeWidth={STROKE} aria-hidden="true" />
             </Button>
           </IconTooltip>
         )}

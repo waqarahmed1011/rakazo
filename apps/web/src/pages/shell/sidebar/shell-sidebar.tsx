@@ -181,6 +181,15 @@ export function ShellSidebar({
               replace: true,
             })
           }
+          onBoard={
+            boardEnabled
+              ? () => {
+                  setMobileOpen(false);
+                  navigate("/app/board");
+                }
+              : undefined
+          }
+          onSettings={() => openSettings("general")}
           createMenuOpen={createMenuOpen}
           setCreateMenuOpen={setCreateMenuOpen}
           activityMode={activityMode}

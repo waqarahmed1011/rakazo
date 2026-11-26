@@ -63,6 +63,7 @@ import { isApplePlatform } from "./shell/shell-shortcuts";
 import { ShellSidePanel } from "./shell/side-panel";
 import { ArchivedChats } from "./shell/sidebar/archived-chats";
 import { ShellSidebar } from "./shell/sidebar/shell-sidebar";
+import { SidebarArtifacts } from "./shell/sidebar/sidebar-artifacts";
 import { BotsSidebarLayout } from "./shell/sidebar/sidebar-layout";
 import { SidebarRoster } from "./shell/sidebar/sidebar-roster";
 import { SnoozedChats } from "./shell/sidebar/snoozed-chats";
@@ -675,45 +676,55 @@ function SpaceShell() {
         setCreateBotOpen={dialogs.setCreateBotOpen}
         chatMenu={chatMenu}
         roster={
-          <SidebarRoster
-            mini={sidebar.mini}
-            sidebarGroups={sidebar.sidebarGroups}
-            collapsedSidebarSections={collapsedSidebarSections}
-            bootstrapMe={bootstrapMe}
-            botSections={botSections}
-            spaces={spaces}
-            rosterDropKey={rosterDrop.rosterDropKey}
-            setRosterDropKey={rosterDrop.setRosterDropKey}
-            rosterDropAction={rosterDrop.rosterDropAction}
-            applyRosterDrop={rosterDrop.applyRosterDrop}
-            openSpaceChat={openSpaceChat}
-            openSpaceSettings={openSpaceSettings}
-            setRenameSectionTarget={dialogs.setRenameSectionTarget}
-            setDeleteSectionTarget={dialogs.setDeleteSectionTarget}
-            moveSidebarSection={(spaceId, keys, key, step) => {
-              const order = moveSectionKey(keys, key, step);
-              setSpaces((current) =>
-                current.map((space) =>
-                  space.id === spaceId ? { ...space, sectionOrder: order } : space,
-                ),
-              );
-              void rpc.spaces
-                .setSectionOrder({ spaceId, order })
-                .catch(() => refreshBots().catch(() => undefined));
-            }}
-            toggleSidebarSection={toggleSidebarSection}
-            inGroup={inGroup}
-            active={active}
-            activeGroup={activeGroup}
-            botsSidebarDensity={botsSidebarDensity}
-            dismissedRunErrorIds={composer.dismissedRunErrorIds}
-            displayedRunError={composer.displayedRunError}
-            draggedChatKey={rosterDrop.draggedChatKey}
-            setDraggedChatKey={rosterDrop.setDraggedChatKey}
-            chatMenu={chatMenu}
-            reorderRosterChat={roster.reorderRosterChat}
-            activeSnapshot={activeSnapshot}
-          />
+          <>
+            <SidebarRoster
+              mini={sidebar.mini}
+              sidebarGroups={sidebar.sidebarGroups}
+              collapsedSidebarSections={collapsedSidebarSections}
+              bootstrapMe={bootstrapMe}
+              botSections={botSections}
+              spaces={spaces}
+              rosterDropKey={rosterDrop.rosterDropKey}
+              setRosterDropKey={rosterDrop.setRosterDropKey}
+              rosterDropAction={rosterDrop.rosterDropAction}
+              applyRosterDrop={rosterDrop.applyRosterDrop}
+              openSpaceChat={openSpaceChat}
+              openSpaceSettings={openSpaceSettings}
+              setRenameSectionTarget={dialogs.setRenameSectionTarget}
+              setDeleteSectionTarget={dialogs.setDeleteSectionTarget}
+              moveSidebarSection={(spaceId, keys, key, step) => {
+                const order = moveSectionKey(keys, key, step);
+                setSpaces((current) =>
+                  current.map((space) =>
+                    space.id === spaceId ? { ...space, sectionOrder: order } : space,
+                  ),
+                );
+                void rpc.spaces
+                  .setSectionOrder({ spaceId, order })
+                  .catch(() => refreshBots().catch(() => undefined));
+              }}
+              toggleSidebarSection={toggleSidebarSection}
+              inGroup={inGroup}
+              active={active}
+              activeGroup={activeGroup}
+              botsSidebarDensity={botsSidebarDensity}
+              dismissedRunErrorIds={composer.dismissedRunErrorIds}
+              displayedRunError={composer.displayedRunError}
+              draggedChatKey={rosterDrop.draggedChatKey}
+              setDraggedChatKey={rosterDrop.setDraggedChatKey}
+              chatMenu={chatMenu}
+              reorderRosterChat={roster.reorderRosterChat}
+              activeSnapshot={activeSnapshot}
+            />
+            {sidebar.mini || search.query ? null : (
+              <SidebarArtifacts
+                open={(path) => {
+                  setMobileSidebarOpen(false);
+                  navigate(path);
+                }}
+              />
+            )}
+          </>
         }
         archived={
           <>

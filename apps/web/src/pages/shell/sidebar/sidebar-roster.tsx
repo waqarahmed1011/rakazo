@@ -32,6 +32,7 @@ import {
   Trash2,
   Users,
 } from "lucide-react";
+import { useState } from "react";
 import { IconTooltip } from "../../../components/IconTooltip";
 import {
   compactRosterStatusLabel,
@@ -107,6 +108,10 @@ export function SidebarRoster({
 }) {
   useRedrawAtMidnight();
   const { t } = useLingui();
+  // The section header being dragged to a new place, with the Space whose order it changes.
+  const [draggedSection, setDraggedSection] = useState<{ spaceId: string; key: string } | null>(
+    null,
+  );
   return (
     <>
       {sidebarGroups.map((group, groupIndex) => {
@@ -115,9 +120,9 @@ export function SidebarRoster({
         const groupBotIds = group.bots.flatMap((item) =>
           item.kind === "bot" ? [item.chat.id] : [],
         );
-        const settingsLabel = group.canOpenSpaceSettings
-          ? t`Settings for ${group.spaceName}`
-          : null;
+        // With one Space listed, Settings sits in the top bar instead.
+        const settingsLabel =
+          group.canOpenSpaceSettings && group.showLock ? t`Settings for ${group.spaceName}` : null;
         const chatCount = collapsed ? group.bots.length : 0;
         const tiles = group.tiles && !mini;
         const headerDropTarget: RosterDropTarget | null =
@@ -140,6 +145,13 @@ export function SidebarRoster({
             moveSidebarSection?.(group.spaceId, group.orderKeys, group.orderKey, step);
         };
         const hasMenu = Boolean(section) || movable;
+        // Another section of the same Space can take the dragged one's place.
+        const sectionDropTarget = Boolean(
+          draggedSection &&
+            movable &&
+            draggedSection.spaceId === group.spaceId &&
+            draggedSection.key !== group.orderKey,
+        );
         return (
           <Collapsible
             key={group.key}
@@ -154,9 +166,26 @@ export function SidebarRoster({
               // biome-ignore lint/a11y/useSemanticElements: groups sidebar controls, not form fields; Move to remains the keyboard alternative.
               <div
                 role="group"
+                draggable={movable}
                 data-roster-drop={rosterDropKey === headerDropKey ? "true" : undefined}
-                className={`group/header mt-2 grid rounded-lg ${rosterDropKey === headerDropKey ? "bg-sidebar-accent" : ""}`}
+                className={`group/header mt-2 grid rounded-lg ${rosterDropKey === headerDropKey ? "bg-sidebar-accent" : ""} ${draggedSection?.key === group.orderKey && draggedSection?.spaceId === group.spaceId ? "opacity-50" : ""}`}
+                onDragStart={(event) => {
+                  if (!movable || !group.orderKey) return;
+                  event.dataTransfer.effectAllowed = "move";
+                  event.dataTransfer.setData("text/plain", group.title ?? "");
+                  setDraggedSection({ spaceId: group.spaceId, key: group.orderKey });
+                }}
+                onDragEnd={() => {
+                  setDraggedSection(null);
+                  if (rosterDropKey === headerDropKey) setRosterDropKey(null);
+                }}
                 onDragOver={(event) => {
+                  if (sectionDropTarget) {
+                    event.preventDefault();
+                    event.dataTransfer.dropEffect = "move";
+                    if (rosterDropKey !== headerDropKey) setRosterDropKey(headerDropKey);
+                    return;
+                  }
                   if (!headerDropTarget || !rosterDropAction(headerDropTarget, false)) return;
                   event.preventDefault();
                   event.dataTransfer.dropEffect = "move";
@@ -166,6 +195,20 @@ export function SidebarRoster({
                   if (rosterDropKey === headerDropKey) setRosterDropKey(null);
                 }}
                 onDrop={(event) => {
+                  if (sectionDropTarget && draggedSection && group.orderKey) {
+                    event.preventDefault();
+                    const from = group.orderKeys.indexOf(draggedSection.key);
+                    const to = group.orderKeys.indexOf(group.orderKey);
+                    moveSidebarSection?.(
+                      group.spaceId,
+                      group.orderKeys,
+                      draggedSection.key,
+                      to - from,
+                    );
+                    setDraggedSection(null);
+                    setRosterDropKey(null);
+                    return;
+                  }
                   if (!headerDropTarget) return;
                   event.preventDefault();
                   applyRosterDrop(headerDropTarget, false, listKeys);

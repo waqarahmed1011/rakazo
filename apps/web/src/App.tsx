@@ -334,7 +334,7 @@ function SessionApp() {
                   )
                 }
               >
-                <Route element={<AppRailLayout enabled={boardEnabled} />}>
+                <Route element={<AppRailLayout enabled={false} />}>
                   <Route path="/app" element={<ShellPage />} />
                   <Route path="/app/g/:groupId" element={<ShellPage />} />
                   <Route path="/app/:botId" element={<ShellPage />} />
